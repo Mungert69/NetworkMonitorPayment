@@ -17,10 +17,11 @@ namespace NetworkMonitor.Payment.Controllers
         public readonly IOptions<StripeOptions> options;
         private readonly IStripeClient client;
         private  IStripeService _stripeService;
-        private INetLoggerFactory _logger;
+        private ILogger _logger;
 
         public PaymentsController(IOptions<StripeOptions> options, IStripeService stripeService, INetLoggerFactory loggerFactory)
         {
+            _logger=loggerFactory.GetLogger("PaymentsController");
             _stripeService=stripeService;
             this.options = options;
             this.client = new StripeClient(this.options.Value.SecretKey);
@@ -61,6 +62,7 @@ namespace NetworkMonitor.Payment.Controllers
                 var session = await service.CreateAsync(options);
                 Response.Headers.Add("Location", session.Url);
                 _stripeService.SessionList.Add(session.Id,session.CustomerId);
+                _logger.Info("Success : Added UserID "+userId+" to SessionList with customerId "+session.CustomerId+ " Add got sessionId "+session.Id);
                 return new StatusCodeResult(303);
             }
             catch (StripeException e)
