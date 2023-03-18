@@ -6,16 +6,22 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
+using NetworkMonitor.Payment.Services;
+using NetworkMonitor.Objects.Factory;
+using MetroLog;
 
-namespace server.Controllers
+namespace NetworkMonitor.Payment.Controllers
 {
     public class PaymentsController : Controller
     {
         public readonly IOptions<StripeOptions> options;
         private readonly IStripeClient client;
+        private  IStripeService _stripeService;
+        private INetLoggerFactory _logger;
 
-        public PaymentsController(IOptions<StripeOptions> options)
+        public PaymentsController(IOptions<StripeOptions> options, IStripeService stripeService, INetLoggerFactory loggerFactory)
         {
+            _stripeService=stripeService;
             this.options = options;
             this.client = new StripeClient(this.options.Value.SecretKey);
         }
@@ -31,8 +37,8 @@ namespace server.Controllers
             };
         }
 
-        [HttpPost("create-checkout-session")]
-        public async Task<IActionResult> CreateCheckoutSession()
+        [HttpPost("CreateCheckoutSession/{userId}")]
+        public async Task<IActionResult> CreateCheckoutSession([FromBody] String userId)
         {
             var options = new SessionCreateOptions
             {
@@ -54,6 +60,7 @@ namespace server.Controllers
             {
                 var session = await service.CreateAsync(options);
                 Response.Headers.Add("Location", session.Url);
+                _stripeService.SessionList.Add(session.Id,session.CustomerId);
                 return new StatusCodeResult(303);
             }
             catch (StripeException e)

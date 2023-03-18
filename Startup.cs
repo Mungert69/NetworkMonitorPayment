@@ -10,8 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json.Serialization;
 using Stripe;
+using NetworkMonitor.Payment.Services;
+using NetworkMonitor.Objects.Factory;
 
-namespace server
+namespace NetworkMonitor.Payment
 {
     public class Startup
     {
@@ -46,6 +48,9 @@ namespace server
                 options.AddPolicy("AllowAnyOrigin",
                     builder => builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
             });
+
+            services.AddSingleton<IStripeService,StripeService>();
+            services.AddSingleton<INetLoggerFactory,NetLoggerFactory>();
 
             services.AddControllersWithViews().AddNewtonsoftJson(options =>
             {
