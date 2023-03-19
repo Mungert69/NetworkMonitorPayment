@@ -20,6 +20,10 @@
     <PackageReference Include="DotNetEnv" Version="2.3.0" />
     <PackageReference Include="Stripe.net" Version="41.8.0" />
     <PackageReference Include="MetroLog.Net6" Version="2.1.0" />
+       <PackageReference Include="CloudNative.CloudEvents" Version="2.5.1" />
+    <PackageReference Include="CloudNative.CloudEvents.AspNetCore" Version="2.5.1" />
+    <PackageReference Include="CloudNative.CloudEvents.NewtonsoftJson" Version="2.5.1" />
+        <PackageReference Include="RabbitMQ.Client" Version="6.4.0" /> 
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NetworkMonitor\NetworkMonitor.csproj" />

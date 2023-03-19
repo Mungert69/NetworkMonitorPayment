@@ -24,7 +24,7 @@
 
         <div class="price-table-container">
           <section>
-            <form action="http://localhost:4242/create-checkout-session" method="POST">
+            <form action="http://localhost:4242/CreateCheckoutSession/test" method="POST">
               <input type="hidden" id="basicPrice" name="priceId">
               <img
                 src="/img/starter.png"
@@ -38,8 +38,9 @@
             </form>
           </section>
           <section>
-            <form action="http://localhost:4242/create-checkout-session" method="POST">
+            <form action="http://localhost:4242/CreateCheckoutSession" method="POST">
               <input type="hidden" id="proPrice" name="priceId">
+              <input type="hidden" id="test" name="userId">
               <img
                 src="/img/professional.png"
                 width="120"

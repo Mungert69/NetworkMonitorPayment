@@ -14,12 +14,12 @@ namespace NetworkMonitor.Payment.Controllers
 {
     public class PaymentsController : Controller
     {
-        public readonly IOptions<StripeOptions> options;
+        public readonly IOptions<PaymentOptions> options;
         private readonly IStripeClient client;
         private  IStripeService _stripeService;
         private ILogger _logger;
 
-        public PaymentsController(IOptions<StripeOptions> options, IStripeService stripeService, INetLoggerFactory loggerFactory)
+        public PaymentsController(IOptions<PaymentOptions> options, IStripeService stripeService, INetLoggerFactory loggerFactory)
         {
             _logger=loggerFactory.GetLogger("PaymentsController");
             _stripeService=stripeService;
@@ -39,7 +39,7 @@ namespace NetworkMonitor.Payment.Controllers
         }
 
         [HttpPost("CreateCheckoutSession/{userId}")]
-        public async Task<IActionResult> CreateCheckoutSession([FromBody] String userId)
+        public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId )
         {
             var options = new SessionCreateOptions
             {
@@ -61,7 +61,7 @@ namespace NetworkMonitor.Payment.Controllers
             {
                 var session = await service.CreateAsync(options);
                 Response.Headers.Add("Location", session.Url);
-                _stripeService.SessionList.Add(session.Id,session.CustomerId);
+                _stripeService.SessionList.Add(session.Id,userId);
                 _logger.Info("Success : Added UserID "+userId+" to SessionList with customerId "+session.CustomerId+ " Add got sessionId "+session.Id);
                 return new StatusCodeResult(303);
             }
@@ -133,6 +133,7 @@ namespace NetworkMonitor.Payment.Controllers
             if (stripeEvent.Type == "checkout.session.completed")
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
+                _logger.Info("SUCCESS : Got userId "+_stripeService.SessionList[session.Id]);
                 Console.WriteLine($"Session ID: {session.Id}");
                 // Take some action based on session.
             }

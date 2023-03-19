@@ -34,7 +34,7 @@ namespace NetworkMonitor.Payment
                 Version = "0.0.1",
             };
 
-            services.Configure<StripeOptions>(options =>
+            services.Configure<PaymentOptions>(options =>
             {
                 options.PublishableKey = Environment.GetEnvironmentVariable("STRIPE_PUBLISHABLE_KEY");
                 options.SecretKey = Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY");
@@ -42,6 +42,8 @@ namespace NetworkMonitor.Payment
                 options.BasicPrice = Environment.GetEnvironmentVariable("BASIC_PRICE_ID");
                 options.ProPrice = Environment.GetEnvironmentVariable("PRO_PRICE_ID");
                 options.Domain = Environment.GetEnvironmentVariable("DOMAIN");
+                options.InstanceName=Environment.GetEnvironmentVariable("INSTANCE_NAME");
+                options.HostName=Environment.GetEnvironmentVariable("HOST_NAME");
             });
              services.AddCors(options =>
             {
