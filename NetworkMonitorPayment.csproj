@@ -4,7 +4,7 @@
     <TargetFramework>netcoreapp7.0</TargetFramework>
     <PublishProfile>DefaultContainer</PublishProfile>
     <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:7.0-jammy-amd64</ContainerBaseImage>
-    <ContainerImageName>mungert/networkmonitorstripe</ContainerImageName>
+    <ContainerImageName>mungert/networkmonitorpayment</ContainerImageName>
     <ContainerImageTag>0.0.1</ContainerImageTag>
 </PropertyGroup>
 
