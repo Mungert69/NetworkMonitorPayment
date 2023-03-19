@@ -14,6 +14,7 @@ namespace NetworkMonitor.Payment.Services
     {
         Dictionary<string, string> SessionList { get; set; }
         ResultObj WakeUp();
+        ResultObj UpdateUserSubscription(Stripe.Checkout.Session session);
     }
 
     public class StripeService : IStripeService
@@ -53,6 +54,7 @@ namespace NetworkMonitor.Payment.Services
                     result.Message += "Error : failed to find user with sessionId = " + session.Id;
                     result.Success = false;
                 }
+                _logger.Info(result.Message);
 
             }
             catch (Exception e)

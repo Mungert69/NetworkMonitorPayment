@@ -133,6 +133,7 @@ namespace NetworkMonitor.Payment.Controllers
             if (stripeEvent.Type == "checkout.session.completed")
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
+                _stripeService.UpdateUserSubscription(session);
                 _logger.Info("SUCCESS : Got userId "+_stripeService.SessionList[session.Id]);
                 Console.WriteLine($"Session ID: {session.Id}");
                 // Take some action based on session.

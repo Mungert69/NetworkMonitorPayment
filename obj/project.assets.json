@@ -7564,10 +7564,14 @@
   },
   "projectFileDependencyGroups": {
     "net7.0": [
+      "CloudNative.CloudEvents >= 2.5.1",
+      "CloudNative.CloudEvents.AspNetCore >= 2.5.1",
+      "CloudNative.CloudEvents.NewtonsoftJson >= 2.5.1",
       "DotNetEnv >= 2.3.0",
       "MetroLog.Net6 >= 2.1.0",
       "NetworkMonitor >= 1.0.0",
       "Newtonsoft.Json >= 13.0.1",
+      "RabbitMQ.Client >= 6.4.0",
       "Stripe.net >= 41.8.0"
     ]
   },
@@ -7613,6 +7617,18 @@
       "net7.0": {
         "targetAlias": "netcoreapp7.0",
         "dependencies": {
+          "CloudNative.CloudEvents": {
+            "target": "Package",
+            "version": "[2.5.1, )"
+          },
+          "CloudNative.CloudEvents.AspNetCore": {
+            "target": "Package",
+            "version": "[2.5.1, )"
+          },
+          "CloudNative.CloudEvents.NewtonsoftJson": {
+            "target": "Package",
+            "version": "[2.5.1, )"
+          },
           "DotNetEnv": {
             "target": "Package",
             "version": "[2.3.0, )"
@@ -7624,6 +7640,10 @@
           "Newtonsoft.Json": {
             "target": "Package",
             "version": "[13.0.1, )"
+          },
+          "RabbitMQ.Client": {
+            "target": "Package",
+            "version": "[6.4.0, )"
           },
           "Stripe.net": {
             "target": "Package",
