@@ -348,3 +348,5 @@ http-freenetworkmonitor.pfx
 *project.razor.json
 UserInfos
 .env
+obj/project.assets.json
+obj/project.nuget.cache
