@@ -6,6 +6,8 @@
 
     public string BasicPrice { get; set; }
     public string ProPrice { get; set; }
+  public string BasicPriceName { get; set; }
+    public string ProPriceName { get; set; }
     public string Domain { get; set; }
     public string InstanceName{get;set;}
     public string HostName{get;set;}

@@ -41,6 +41,8 @@ namespace NetworkMonitor.Payment
                 options.WebhookSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET");
                 options.BasicPrice = Environment.GetEnvironmentVariable("BASIC_PRICE_ID");
                 options.ProPrice = Environment.GetEnvironmentVariable("PRO_PRICE_ID");
+                 options.BasicPriceName = Environment.GetEnvironmentVariable("BASIC_PRICE_NAME");
+                options.ProPriceName = Environment.GetEnvironmentVariable("PRO_PRICE_NAME");
                 options.Domain = Environment.GetEnvironmentVariable("DOMAIN");
                 options.InstanceName=Environment.GetEnvironmentVariable("INSTANCE_NAME");
                 options.HostName=Environment.GetEnvironmentVariable("HOST_NAME");
