@@ -42,6 +42,7 @@ namespace NetworkMonitor.Payment.Services
                  var userInfo = new UserInfo();
                 userInfo.UserID = _sessionList[session.Id];
                 userInfo.AccountType="full";
+                userInfo.HostLimit=100;
                 userInfo.CustomerId=session.CustomerId;
                 if (userInfo.UserID != null)
                 {
