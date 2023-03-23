@@ -47,6 +47,7 @@ namespace NetworkMonitor.Payment.Services
                     {
                         userInfo.AccountType = paymentObj.ProductName;
                         userInfo.HostLimit = paymentObj.HostLimit;
+                        userInfo.CancelAt=session.CancelAt;
                         result.Message += " Success : Changed CustomerID " + session.CustomerId + " Subsciption Product to " + paymentObj.ProductName;
                     }
                     else
