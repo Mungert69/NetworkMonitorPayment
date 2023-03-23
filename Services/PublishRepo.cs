@@ -14,6 +14,11 @@ namespace NetworkMonitor.Objects.Repository
             rabbitListener.Publish<UserInfo>( "updateUserSubscription", userInfo);
             logger.Info(" Published event updateUserSubscription for user = "+userInfo.UserID);
         }
+          public static void CreateUserSubscription(ILogger logger,RabbitListener rabbitListener, UserInfo userInfo)
+        {
+            rabbitListener.Publish<UserInfo>( "createUserSubscription", userInfo);
+            logger.Info(" Published event createUserSubscription for user = "+userInfo.UserID);
+        }
         public static void PaymentReady(ILogger logger,RabbitListener rabbitListener, bool isReady)
         {
 

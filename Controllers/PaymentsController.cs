@@ -87,10 +87,11 @@ namespace NetworkMonitor.Payment.Controllers
         }
 
         [HttpPost("customer-portal")]
-        public async Task<IActionResult> CustomerPortal(string sessionId)
+        public async Task<IActionResult> CustomerPortal()
         {
             // For demonstration purposes, we're using the Checkout session to retrieve the customer ID.
             // Typically this is stored alongside the authenticated user in your database.
+          string sessionId=  Request.Form["session_Id"];
             var checkoutService = new SessionService(this.client);
             var checkoutSession = await checkoutService.GetAsync(sessionId);
 
@@ -133,9 +134,16 @@ namespace NetworkMonitor.Payment.Controllers
             if (stripeEvent.Type == "checkout.session.completed")
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                _stripeService.UpdateUserSubscription(session);
+                _stripeService.CreateUserSubscription(session);
                 _logger.Info("SUCCESS : Got userId "+_stripeService.SessionList[session.Id]);
                 Console.WriteLine($"Session ID: {session.Id}");
+                // Take some action based on session.
+            }
+             if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
+            {
+                var session = stripeEvent.Data.Object as Subscription;
+                _stripeService.UpdateUserSubscription(session);
+                Console.WriteLine($"Updating customer subcription for customerId: {session.Customer}");
                 // Take some action based on session.
             }
 
