@@ -24,12 +24,12 @@ namespace NetworkMonitor.Payment.Services
         private Dictionary<string, string> _sessionList = new Dictionary<string, string>();
         private RabbitListener _rabbitRepo;
         private ILogger _logger;
-            public readonly IOptions<PaymentOptions> options;
+        public readonly IOptions<PaymentOptions> options;
         public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options)
         {
-            this.options=options;
+            this.options = options;
             _logger = loggerFactory.GetLogger("StripeService");
-            _rabbitRepo = new RabbitListener(_logger, this, options.Value.InstanceName, options.Value.HostName);
+            _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.InstanceName, this.options.Value.HostName);
         }
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
         public ResultObj UpdateUserSubscription(Subscription session)
@@ -39,28 +39,28 @@ namespace NetworkMonitor.Payment.Services
             try
             {
                 var userInfo = new UserInfo();
-                SubscriptionItem item=session.Items.FirstOrDefault();
-                if (item!= null){
-                    ProductObj paymentObj= options.Value.Products.Where(w => w.PriceId==item.Price.Id).FirstOrDefault();
-                    if (paymentObj!=null) {
-                        userInfo.AccountType=paymentObj.ProductName;
-                        userInfo.HostLimit=paymentObj.HostLimit;
-                        result.Message+= " Success : Changed CustomerID "+session.CustomerId+" Subsciption Product to "+paymentObj.ProductName;
-                        }
-                        else{
-                            result.Message+= " Error : Failed to find Product with PriceID "+item.Price.Id;
-                        
-                            _logger.Error("Error : Failed to find Product with PriceID "+item.Price.Id);
-                        }
+                SubscriptionItem item = session.Items.FirstOrDefault();
+                if (item != null)
+                {
+                    ProductObj paymentObj = this.options.Value.Products.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
+                    if (paymentObj != null)
+                    {
+                        userInfo.AccountType = paymentObj.ProductName;
+                        userInfo.HostLimit = paymentObj.HostLimit;
+                        result.Message += " Success : Changed CustomerID " + session.CustomerId + " Subsciption Product to " + paymentObj.ProductName;
+                    }
+                    else
+                    {
+                        result.Message += " Error : Failed to find Product with PriceID " + item.Price.Id;
+                        _logger.Error(" Failed to find Product with PriceID " + item.Price.Id);
+                    }
                 }
-                else {
-                    result.Message+= " Error : Subcription Items contains no Subscription for CustomerID "+session.CustomerId;
-                        
-                         _logger.Error("Error : Subcription Items contains no Subscription for CustomerID "+session.CustomerId);
-                     
+                else
+                {
+                    result.Message += " Error : Subcription Items contains no Subscription for CustomerID " + session.CustomerId;
+                    _logger.Error(" Subcription Items contains no Subscription for CustomerID " + session.CustomerId);
                 }
                 userInfo.CustomerId = session.CustomerId;
-                
                 if (userInfo.CustomerId != null)
                 {
                     PublishRepo.UpdateUserSubscription(_logger, _rabbitRepo, userInfo);

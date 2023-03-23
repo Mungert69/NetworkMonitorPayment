@@ -44,7 +44,7 @@ namespace NetworkMonitor.Payment
                 options.InstanceName=_config.GetValue<string>("InstanceName");
                 options.HostName=_config.GetValue<string>("Hostname");
                 options.Products=new List<ProductObj>();
-                 _config.GetSection("ProcessorList").Bind(options.Products);
+                 _config.GetSection("Products").Bind(options.Products);
            
             });
              services.AddCors(options =>

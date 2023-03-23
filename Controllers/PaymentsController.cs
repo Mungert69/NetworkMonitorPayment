@@ -9,24 +9,21 @@ using Stripe.Checkout;
 using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Objects.Factory;
 using MetroLog;
-
 namespace NetworkMonitor.Payment.Controllers
 {
     public class PaymentsController : Controller
     {
         public readonly IOptions<PaymentOptions> options;
         private readonly IStripeClient client;
-        private  IStripeService _stripeService;
+        private IStripeService _stripeService;
         private ILogger _logger;
-
         public PaymentsController(IOptions<PaymentOptions> options, IStripeService stripeService, INetLoggerFactory loggerFactory)
         {
-            _logger=loggerFactory.GetLogger("PaymentsController");
-            _stripeService=stripeService;
+            _logger = loggerFactory.GetLogger("PaymentsController");
+            _stripeService = stripeService;
             this.options = options;
             this.client = new StripeClient(this.options.Value.SecretKey);
         }
-
         [HttpGet("config")]
         public ConfigResponse Setup()
         {
@@ -37,13 +34,12 @@ namespace NetworkMonitor.Payment.Controllers
                 PublishableKey = this.options.Value.PublishableKey,
             };
         }
-
         [HttpPost("CreateCheckoutSession/{userId}")]
-        public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId )
+        public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId)
         {
             var options = new SessionCreateOptions
             {
-                  SuccessUrl = this.options.Value.Domain + "?success=true&session_id={CHECKOUT_SESSION_ID}",
+                SuccessUrl = this.options.Value.Domain + "?success=true&session_id={CHECKOUT_SESSION_ID}",
                 CancelUrl = this.options.Value.Domain + "?canceled=true",
                 Mode = "subscription",
                 LineItems = new List<SessionLineItemOptions>
@@ -61,8 +57,8 @@ namespace NetworkMonitor.Payment.Controllers
             {
                 var session = await service.CreateAsync(options);
                 Response.Headers.Add("Location", session.Url);
-                _stripeService.SessionList.Add(session.Id,userId);
-                _logger.Info("Success : Added UserID "+userId+" to SessionList with customerId "+session.CustomerId+ " Add got sessionId "+session.Id);
+                _stripeService.SessionList.Add(session.Id, userId);
+                _logger.Info("Success : Added UserID " + userId + " to SessionList with customerId " + session.CustomerId + " Add got sessionId " + session.Id);
                 return new StatusCodeResult(303);
             }
             catch (StripeException e)
@@ -77,7 +73,6 @@ namespace NetworkMonitor.Payment.Controllers
                 });
             }
         }
-
         [HttpGet("checkout-session")]
         public async Task<IActionResult> CheckoutSession(string sessionId)
         {
@@ -85,32 +80,32 @@ namespace NetworkMonitor.Payment.Controllers
             var session = await service.GetAsync(sessionId);
             return Ok(session);
         }
-
         [HttpPost("customer-portal")]
         public async Task<IActionResult> CustomerPortal()
         {
             // For demonstration purposes, we're using the Checkout session to retrieve the customer ID.
             // Typically this is stored alongside the authenticated user in your database.
-          string sessionId=  Request.Form["session_Id"];
-            var checkoutService = new SessionService(this.client);
-            var checkoutSession = await checkoutService.GetAsync(sessionId);
-
+            string sessionId = Request.Form["session_Id"];
+            string customerId = Request.Form["customer_Id"];
+            if (customerId == null)
+            {
+                var checkoutService = new SessionService(this.client);
+                var checkoutSession = await checkoutService.GetAsync(sessionId);
+                customerId = checkoutSession.CustomerId;
+            }
             // This is the URL to which your customer will return after
             // they are done managing billing in the Customer Portal.
             var returnUrl = this.options.Value.Domain;
-
             var options = new Stripe.BillingPortal.SessionCreateOptions
             {
-                Customer = checkoutSession.CustomerId,
+                Customer = customerId,
                 ReturnUrl = returnUrl,
             };
             var service = new Stripe.BillingPortal.SessionService(this.client);
             var session = await service.CreateAsync(options);
-
             Response.Headers.Add("Location", session.Url);
             return new StatusCodeResult(303);
         }
-
         [HttpPost("webhook")]
         public async Task<IActionResult> Webhook()
         {
@@ -130,23 +125,21 @@ namespace NetworkMonitor.Payment.Controllers
                 Console.WriteLine($"Something failed {e}");
                 return BadRequest();
             }
-
             if (stripeEvent.Type == "checkout.session.completed")
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
                 _stripeService.CreateUserSubscription(session);
-                _logger.Info("SUCCESS : Got userId "+_stripeService.SessionList[session.Id]);
+                _logger.Info("SUCCESS : Got userId " + _stripeService.SessionList[session.Id]);
                 Console.WriteLine($"Session ID: {session.Id}");
                 // Take some action based on session.
             }
-             if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
+            if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
                 _stripeService.UpdateUserSubscription(session);
                 Console.WriteLine($"Updating customer subcription for customerId: {session.Customer}");
                 // Take some action based on session.
             }
-
             return Ok();
         }
     }
