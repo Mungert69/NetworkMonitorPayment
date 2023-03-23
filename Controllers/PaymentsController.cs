@@ -32,8 +32,8 @@ namespace NetworkMonitor.Payment.Controllers
         {
             return new ConfigResponse
             {
-                ProPrice = this.options.Value.ProPrice,
-                BasicPrice = this.options.Value.BasicPrice,
+                ProPrice = this.options.Value.Products[0].PriceId,
+                BasicPrice = this.options.Value.Products[1].PriceId,
                 PublishableKey = this.options.Value.PublishableKey,
             };
         }

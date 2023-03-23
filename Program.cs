@@ -1,11 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using System.Net;
+
 
 namespace NetworkMonitor.Payment
 {
@@ -13,18 +12,21 @@ namespace NetworkMonitor.Payment
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            IConfigurationRoot config = new ConfigurationBuilder()
+        .AddJsonFile("appsettings.json", optional: false)
+        .Build();
+            IWebHost host = CreateWebHostBuilder(args).Build();
+            host.Run();
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args)
-        {
-            DotNetEnv.Env.Load();
-            return Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder =>
+        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+         WebHost.CreateDefaultBuilder(args).UseKestrel(options =>
+            {
+                options.Listen(IPAddress.Any, 2058);
+                options.Listen(IPAddress.Any, 2059, listenOptions =>
                 {
-                    webBuilder.UseStartup<Startup>();
-                    webBuilder.UseWebRoot(Environment.GetEnvironmentVariable("STATIC_DIR"));
+                    listenOptions.UseHttps("https.pfx", "Ac£0462110");
                 });
-        }   
+            }).UseStartup<Startup>();
     }
 }

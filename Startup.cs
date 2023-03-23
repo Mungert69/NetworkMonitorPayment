@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json.Serialization;
 using Stripe;
 using NetworkMonitor.Payment.Services;
+using NetworkMonitor.Payment.Models;
 using NetworkMonitor.Objects.Factory;
 
 namespace NetworkMonitor.Payment
@@ -19,10 +20,10 @@ namespace NetworkMonitor.Payment
     {
         public Startup(IConfiguration configuration)
         {
-            Configuration = configuration;
+            _config = configuration;
         }
 
-        public IConfiguration Configuration { get; }
+        public IConfiguration _config { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -36,16 +37,15 @@ namespace NetworkMonitor.Payment
 
             services.Configure<PaymentOptions>(options =>
             {
-                options.PublishableKey = Environment.GetEnvironmentVariable("STRIPE_PUBLISHABLE_KEY");
-                options.SecretKey = Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY");
-                options.WebhookSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET");
-                options.BasicPrice = Environment.GetEnvironmentVariable("BASIC_PRICE_ID");
-                options.ProPrice = Environment.GetEnvironmentVariable("PRO_PRICE_ID");
-                 options.BasicPriceName = Environment.GetEnvironmentVariable("BASIC_PRICE_NAME");
-                options.ProPriceName = Environment.GetEnvironmentVariable("PRO_PRICE_NAME");
-                options.Domain = Environment.GetEnvironmentVariable("DOMAIN");
-                options.InstanceName=Environment.GetEnvironmentVariable("INSTANCE_NAME");
-                options.HostName=Environment.GetEnvironmentVariable("HOST_NAME");
+                options.PublishableKey = _config.GetValue<string>("StripePublishableKey");
+                options.SecretKey = _config.GetValue<string>("StripeSecretKey");
+                options.WebhookSecret = _config.GetValue<string>("StripeWebhookSecret");
+                options.Domain = _config.GetValue<string>("Domain");
+                options.InstanceName=_config.GetValue<string>("InstanceName");
+                options.HostName=_config.GetValue<string>("Hostname");
+                options.Products=new List<ProductObj>();
+                 _config.GetSection("ProcessorList").Bind(options.Products);
+           
             });
              services.AddCors(options =>
             {
