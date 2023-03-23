@@ -1,5 +1,5 @@
 /* Fetch prices and update the form */
-fetch("http://localhost:4242/config")
+fetch("http://localhost:2058/config")
   .then(r => r.json())
   .then(({basicPrice, proPrice}) => {
     const basicPriceInput = document.querySelector('#basicPrice');
