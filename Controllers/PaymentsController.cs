@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using Stripe;
 using Stripe.Checkout;
 using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Objects.Factory;
+using NetworkMonitor.Payment.Models;
 using MetroLog;
 namespace NetworkMonitor.Payment.Controllers
 {
@@ -34,19 +36,32 @@ namespace NetworkMonitor.Payment.Controllers
                 PublishableKey = this.options.Value.PublishableKey,
             };
         }
-        [HttpPost("CreateCheckoutSession/{userId}")]
-        public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId)
+        [HttpGet("CreateCheckoutSession/{userId}/{productName}")]
+        public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId, [FromRoute] string productName)
         {
+             ProductObj? productObj=this.options.Value.Products.Where(w => w.ProductName==productName).FirstOrDefault();
+             if (productObj==null || productObj.PriceId==null){
+                string message=" Unable to find product info for product name "+productName+ " . ";
+                _logger.Error(message);
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = message,
+                    }
+                });
+             }
             var options = new SessionCreateOptions
             {
                 SuccessUrl = this.options.Value.Domain + "?success=true&session_id={CHECKOUT_SESSION_ID}&initViewSub=true",
                 CancelUrl = this.options.Value.Domain + "?canceled=true",
                 Mode = "subscription",
-                LineItems = new List<SessionLineItemOptions>
+                  
+                 LineItems = new List<SessionLineItemOptions>
                 {
                     new SessionLineItemOptions
                     {
-                        Price = Request.Form["priceId"],
+                        Price = productObj.PriceId,
                         Quantity = 1,
                     },
                 },
@@ -63,7 +78,7 @@ namespace NetworkMonitor.Payment.Controllers
             }
             catch (StripeException e)
             {
-                Console.WriteLine(e.StripeError.Message);
+                _logger.Error(" Stripe Error . Error was : "+e.StripeError.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
