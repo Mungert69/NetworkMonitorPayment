@@ -39,7 +39,7 @@ namespace NetworkMonitor.Payment.Controllers
         {
             var options = new SessionCreateOptions
             {
-                SuccessUrl = this.options.Value.Domain + "?success=true&session_id={CHECKOUT_SESSION_ID}",
+                SuccessUrl = this.options.Value.Domain + "?success=true&session_id={CHECKOUT_SESSION_ID}&initViewSub=true",
                 CancelUrl = this.options.Value.Domain + "?canceled=true",
                 Mode = "subscription",
                 LineItems = new List<SessionLineItemOptions>
