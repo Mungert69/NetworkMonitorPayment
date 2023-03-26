@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NetworkMonitor.Objects;
 using NetworkMonitor.Objects.Repository;
 using NetworkMonitor.Objects.Factory;
+using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Payment.Models;
 using Microsoft.Extensions.Options;
 using MetroLog;
@@ -16,6 +17,7 @@ namespace NetworkMonitor.Payment.Services
     {
         Dictionary<string, string> SessionList { get; set; }
         ResultObj WakeUp();
+        ResultObj PaymentComplete(PaymentTransaction paymentTransaction);
         ResultObj UpdateUserSubscription(Subscription session);
         ResultObj CreateUserSubscription(Stripe.Checkout.Session session);
     }
@@ -31,19 +33,22 @@ namespace NetworkMonitor.Payment.Services
 
             this.options = options;
             _logger = loggerFactory.GetLogger("StripeService");
-            
-            try{
+
+            try
+            {
                 FileRepo.CheckFileExists("PaymentTransactions", _logger);
-                _paymentTransactions=FileRepo.GetStateStringJsonZ<List<PaymentTransaction>>("PaymentTranactions");
-                int count=0;
-                if (_paymentTransactions!=null){
-                    count=_paymentTransactions.Count;
+                _paymentTransactions = FileRepo.GetStateStringJsonZ<List<PaymentTransaction>>("PaymentTranactions");
+                int count = 0;
+                if (_paymentTransactions != null)
+                {
+                    count = _paymentTransactions.Count;
                 }
-                _logger.Info(" Loaded "+count+" PaymentTranctions from State.");
+                _logger.Info(" Loaded " + count + " PaymentTranctions from State.");
             }
-            catch(Exception e){
-                _paymentTransactions=new List<PaymentTransaction>();
-                _logger.Error(" Failed to load PaymentTransactions from State. Error was : "+e.ToString());
+            catch (Exception e)
+            {
+                _paymentTransactions = new List<PaymentTransaction>();
+                _logger.Error(" Failed to load PaymentTransactions from State. Error was : " + e.ToString());
             }
             _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.InstanceName, this.options.Value.HostName);
         }
@@ -67,18 +72,52 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
+
+        public ResultObj PaymentComplete(PaymentTransaction paymentTransaction)
+        {
+
+            var result = new ResultObj();
+
+            try
+            {
+                var updatePaymentTransaction = _paymentTransactions.Where(w => w.Id == paymentTransaction.Id).FirstOrDefault();
+                if (updatePaymentTransaction != null)
+                {
+
+                    _paymentTransactions.Remove(updatePaymentTransaction);
+                    result.Message = " Payment Complete ";
+                    result.Success = true;
+                }
+                else
+                {
+                    result.Message = " Failed find PaymentTransaction with ID " + paymentTransaction.Id;
+                    result.Success = true;
+                }
+
+            }
+            catch (Exception e)
+            {
+                result.Message = " Failed to Update PaymentTransactions with ID " + paymentTransaction.Id + ". Error was : " + e.ToString();
+                result.Success = false;
+                _logger.Error(result.Message);
+            }
+            return result;
+
+
+        }
         public ResultObj UpdateUserSubscription(Subscription session)
         {
             var result = new ResultObj();
             var userInfo = new UserInfo();
-            var paymentTransaction = new PaymentTransaction(){
-                    Id = _paymentTransactions.Max(m => m.Id),
-                    EventDate = DateTime.UtcNow,
-                    UserInfo = userInfo,
-                    IsUpdate = true,
-                    IsComplete = false,
-                    Result = result
-                };
+            var paymentTransaction = new PaymentTransaction()
+            {
+                Id = _paymentTransactions.Max(m => m.Id),
+                EventDate = DateTime.UtcNow,
+                UserInfo = userInfo,
+                IsUpdate = true,
+                IsComplete = false,
+                Result = result
+            };
             result.Message = "SERVICE : UpdateUserSubscription : ";
             try
             {
@@ -107,7 +146,7 @@ namespace NetworkMonitor.Payment.Services
                 userInfo.CustomerId = session.CustomerId;
                 if (userInfo.CustomerId != null)
                 {
-                    paymentTransaction.UserInfo=userInfo;
+                    paymentTransaction.UserInfo = userInfo;
                     PublishRepo.UpdateUserSubscription(_logger, _rabbitRepo, paymentTransaction);
                     result.Message += " Success : Published event UpdateUserSubscription";
                     result.Success = true;
@@ -127,10 +166,10 @@ namespace NetworkMonitor.Payment.Services
             }
             finally
             {
-                paymentTransaction.UserInfo=userInfo;
-                paymentTransaction.Result=result;
+                paymentTransaction.UserInfo = userInfo;
+                paymentTransaction.Result = result;
                 _paymentTransactions.Add(paymentTransaction);
-                result.Message+=SaveTransactions();
+                result.Message += SaveTransactions();
             }
             return result;
         }
@@ -138,15 +177,15 @@ namespace NetworkMonitor.Payment.Services
         {
             var result = new ResultObj();
             var userInfo = new UserInfo();
-            var  paymentTransaction=new PaymentTransaction()
-                {
-                    Id = _paymentTransactions.Max(m => m.Id),
-                    EventDate = DateTime.UtcNow,
-                    UserInfo = userInfo,
-                    IsUpdate = false,
-                    IsComplete = false,
-                    Result = result
-                };
+            var paymentTransaction = new PaymentTransaction()
+            {
+                Id = _paymentTransactions.Max(m => m.Id),
+                EventDate = DateTime.UtcNow,
+                UserInfo = userInfo,
+                IsUpdate = false,
+                IsComplete = false,
+                Result = result
+            };
             result.Message = "SERVICE : CreateUserSubscription : ";
             try
             {
@@ -156,7 +195,7 @@ namespace NetworkMonitor.Payment.Services
 
                 if (userInfo.UserID != null)
                 {
-                    paymentTransaction.UserInfo=userInfo;
+                    paymentTransaction.UserInfo = userInfo;
                     PublishRepo.CreateUserSubscription(_logger, _rabbitRepo, paymentTransaction);
                     result.Message += "Success : Published event UpdateUserSubscription";
                     result.Success = true;
@@ -176,11 +215,11 @@ namespace NetworkMonitor.Payment.Services
             }
             finally
             {
-                paymentTransaction.UserInfo=userInfo;
-                paymentTransaction.Result=result;
+                paymentTransaction.UserInfo = userInfo;
+                paymentTransaction.Result = result;
                 _paymentTransactions.Add(paymentTransaction);
-               
-                result.Message+=SaveTransactions();
+
+                result.Message += SaveTransactions();
             }
             return result;
         }

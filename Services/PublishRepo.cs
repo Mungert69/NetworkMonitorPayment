@@ -11,12 +11,12 @@ namespace NetworkMonitor.Objects.Repository
     {
         public static void UpdateUserSubscription(ILogger logger,RabbitListener rabbitListener, PaymentTransaction paymentTransaction)
         {
-            rabbitListener.Publish<PaymentTransaction>( "updateUserSubscription", paymentTransaction.UserInfo);
+            rabbitListener.Publish<PaymentTransaction>( "updateUserSubscription", paymentTransaction);
             logger.Info(" Published event updateUserSubscription for user = "+paymentTransaction.UserInfo.UserID);
         }
           public static void CreateUserSubscription(ILogger logger,RabbitListener rabbitListener, PaymentTransaction paymentTransaction)
         {
-            rabbitListener.Publish<PaymentTransaction>( "createUserSubscription", paymentTransaction.UserInfo);
+            rabbitListener.Publish<PaymentTransaction>( "createUserSubscription", paymentTransaction);
             logger.Info(" Published event createUserSubscription for user = "+paymentTransaction.UserInfo.UserID);
         }
         public static void PaymentReady(ILogger logger,RabbitListener rabbitListener, bool isReady)

@@ -117,6 +117,7 @@ namespace NetworkMonitor.Objects.Repository
                         result = WakeUp();
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                     };
+                    break;
                     case "paymentComplete":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
@@ -225,14 +226,14 @@ namespace NetworkMonitor.Objects.Repository
             return result;
         }
 
-          public ResultObj PaymentComplete()
+          public ResultObj PaymentComplete(PaymentTransaction paymentTransaction)
         {
             ResultObj result = new ResultObj();
             result.Success = false;
             result.Message = "MessageAPI : Payment Complete : ";
             try
             {
-                result=_stripeService.PaymentComplete();
+                result=_stripeService.PaymentComplete(paymentTransaction);
                 _logger.Info(result.Message);
             }
             catch (Exception e)
