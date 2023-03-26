@@ -47,8 +47,12 @@ namespace NetworkMonitor.Payment.Services
             }
             catch (Exception e)
             {
-                _paymentTransactions = new List<PaymentTransaction>();
+
                 _logger.Error(" Failed to load PaymentTransactions from State. Error was : " + e.ToString());
+            }
+            if (_paymentTransactions ==null){
+                _paymentTransactions=new List<PaymentTransaction>();
+                _paymentTransactions.Add(new PaymentTransaction());
             }
             _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.InstanceName, this.options.Value.HostName);
         }
