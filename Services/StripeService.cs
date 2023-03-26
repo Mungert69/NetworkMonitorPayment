@@ -118,7 +118,7 @@ namespace NetworkMonitor.Payment.Services
             var userInfo = new UserInfo();
             var paymentTransaction = new PaymentTransaction()
             {
-                Id = _paymentTransactions.Max(m => m.Id),
+                Id = _paymentTransactions.Max(m => m.Id)+1,
                 EventDate = DateTime.UtcNow,
                 UserInfo = userInfo,
                 IsUpdate = true,
@@ -186,7 +186,7 @@ namespace NetworkMonitor.Payment.Services
             var userInfo = new UserInfo();
             var paymentTransaction = new PaymentTransaction()
             {
-                Id = _paymentTransactions.Max(m => m.Id),
+                Id = _paymentTransactions.Max(m => m.Id)+1,
                 EventDate = DateTime.UtcNow,
                 UserInfo = userInfo,
                 IsUpdate = false,
