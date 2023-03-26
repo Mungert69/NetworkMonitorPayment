@@ -17,6 +17,7 @@ namespace NetworkMonitor.Payment.Services
     {
         Dictionary<string, string> SessionList { get; set; }
         ResultObj WakeUp();
+        ResultObj PaymentCheck();
         ResultObj PaymentComplete(PaymentTransaction paymentTransaction);
         ResultObj UpdateUserSubscription(Subscription session);
         ResultObj CreateUserSubscription(Stripe.Checkout.Session session);
@@ -30,10 +31,8 @@ namespace NetworkMonitor.Payment.Services
         public readonly IOptions<PaymentOptions> options;
         public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options)
         {
-
             this.options = options;
             _logger = loggerFactory.GetLogger("StripeService");
-
             try
             {
                 FileRepo.CheckFileExists("PaymentTransactions", _logger);
@@ -47,24 +46,40 @@ namespace NetworkMonitor.Payment.Services
             }
             catch (Exception e)
             {
-
                 _logger.Error(" Failed to load PaymentTransactions from State. Error was : " + e.ToString());
             }
-            if (_paymentTransactions ==null){
-                _paymentTransactions=new List<PaymentTransaction>();
-               
+            if (_paymentTransactions == null)
+            {
+                _paymentTransactions = new List<PaymentTransaction>();
             }
-            if (_paymentTransactions.Count==0){
-                 _paymentTransactions.Add(new PaymentTransaction());
+            if (_paymentTransactions.Count == 0)
+            {
+                _paymentTransactions.Add(new PaymentTransaction());
             }
             _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.InstanceName, this.options.Value.HostName);
         }
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
-
+        public ResultObj PaymentCheck()
+        {
+            var result = new ResultObj();
+            try
+            {
+                PublishRepo.PaymentReady(_logger, _rabbitRepo, true);
+                result.Message = " Payment Transaction Queue Checked";
+                result.Success = true;
+                _logger.Info(result.Message);
+            }
+            catch (Exception e)
+            {
+                result.Message = " Failed to check Payment Transaction Queue . Error was : " + e.ToString();
+                result.Success = false;
+                _logger.Error(result.Message);
+            }
+            return result;
+        }
         private ResultObj SaveTransactions()
         {
             var result = new ResultObj();
-
             try
             {
                 FileRepo.SaveStateJsonZ<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
@@ -79,18 +94,14 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-
         public ResultObj PaymentComplete(PaymentTransaction paymentTransaction)
         {
-
             var result = new ResultObj();
-
             try
             {
                 var updatePaymentTransaction = _paymentTransactions.Where(w => w.Id == paymentTransaction.Id).FirstOrDefault();
                 if (updatePaymentTransaction != null)
                 {
-
                     _paymentTransactions.Remove(updatePaymentTransaction);
                     result.Message = " Payment Complete ";
                     result.Success = true;
@@ -100,7 +111,6 @@ namespace NetworkMonitor.Payment.Services
                     result.Message = " Failed find PaymentTransaction with ID " + paymentTransaction.Id;
                     result.Success = true;
                 }
-
             }
             catch (Exception e)
             {
@@ -109,8 +119,6 @@ namespace NetworkMonitor.Payment.Services
                 _logger.Error(result.Message);
             }
             return result;
-
-
         }
         public ResultObj UpdateUserSubscription(Subscription session)
         {
@@ -118,7 +126,7 @@ namespace NetworkMonitor.Payment.Services
             var userInfo = new UserInfo();
             var paymentTransaction = new PaymentTransaction()
             {
-                Id = _paymentTransactions.Max(m => m.Id)+1,
+                Id = _paymentTransactions.Max(m => m.Id) + 1,
                 EventDate = DateTime.UtcNow,
                 UserInfo = userInfo,
                 IsUpdate = true,
@@ -186,7 +194,7 @@ namespace NetworkMonitor.Payment.Services
             var userInfo = new UserInfo();
             var paymentTransaction = new PaymentTransaction()
             {
-                Id = _paymentTransactions.Max(m => m.Id)+1,
+                Id = _paymentTransactions.Max(m => m.Id) + 1,
                 EventDate = DateTime.UtcNow,
                 UserInfo = userInfo,
                 IsUpdate = false,
@@ -196,10 +204,8 @@ namespace NetworkMonitor.Payment.Services
             result.Message = "SERVICE : CreateUserSubscription : ";
             try
             {
-
                 userInfo.UserID = _sessionList[session.Id];
                 userInfo.CustomerId = session.CustomerId;
-
                 if (userInfo.UserID != null)
                 {
                     paymentTransaction.UserInfo = userInfo;
@@ -225,7 +231,6 @@ namespace NetworkMonitor.Payment.Services
                 paymentTransaction.UserInfo = userInfo;
                 paymentTransaction.Result = result;
                 _paymentTransactions.Add(paymentTransaction);
-
                 result.Message += SaveTransactions();
             }
             return result;
@@ -233,6 +238,20 @@ namespace NetworkMonitor.Payment.Services
         public ResultObj WakeUp()
         {
             var result = new ResultObj();
+            result.Message = " Service : WakeUp ";
+            try
+            {
+                PublishRepo.PaymentReady(_logger, _rabbitRepo, true);
+                result.Message += " Published paymentServiceReady event ";
+                result.Success = true;
+                _logger.Info(result.Message);
+            }
+            catch (Exception e)
+            {
+                result.Message += " Failed to publish paymentServiceReady event . Error was : " + e.ToString();
+                result.Success = false;
+                _logger.Error(result.Message);
+            }
             return result;
         }
     }

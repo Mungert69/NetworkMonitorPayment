@@ -17,7 +17,6 @@ namespace NetworkMonitor.Objects.Repository
 {
     public class RabbitListener
     {
-
         private string _instanceName;
         private IModel _publishChannel;
         private ILogger _logger;
@@ -28,7 +27,7 @@ namespace NetworkMonitor.Objects.Repository
         public RabbitListener(ILogger logger, IStripeService stripeService, string instanceName, string hostname)
         {
             _logger = logger;
-            _stripeService=stripeService;
+            _stripeService = stripeService;
             _instanceName = instanceName;
             _factory = new ConnectionFactory
             {
@@ -43,31 +42,35 @@ namespace NetworkMonitor.Objects.Repository
         }
         public void init()
         {
-            
             _rabbitMQObjs.Add(new RabbitMQObj()
             {
                 ExchangeName = "paymentWakeUp",
                 FuncName = "paymentWakeUp"
             });
-             _rabbitMQObjs.Add(new RabbitMQObj()
+            _rabbitMQObjs.Add(new RabbitMQObj()
             {
                 ExchangeName = "paymentComplete",
                 FuncName = "paymentComplete"
             });
+            _rabbitMQObjs.Add(new RabbitMQObj()
+            {
+                ExchangeName = "paymentCheck",
+                FuncName = "paymentCheck"
+            });
             _connection = _factory.CreateConnection();
             _publishChannel = _connection.CreateModel();
             _rabbitMQObjs.ForEach(r => r.ConnectChannel = _connection.CreateModel());
-             var results=new List<ResultObj>();
+            var results = new List<ResultObj>();
             results.Add(DeclareQueues());
             results.Add(DeclareConsumers());
             results.Add(BindChannelToConsumer());
-            bool flag=true;
-            string messages="";
-            results.ForEach(f => messages+=f.Message);
-            results.ForEach(f => flag=f.Success && flag);
-            if (flag) _logger.Info("Success : Setup RabbitListener messages were : "+messages);
-            else _logger.Fatal("Error : Failed to setup RabbitListener messages were : "+messages);
-}
+            bool flag = true;
+            string messages = "";
+            results.ForEach(f => messages += f.Message);
+            results.ForEach(f => flag = f.Success && flag);
+            if (flag) _logger.Info("Success : Setup RabbitListener messages were : " + messages);
+            else _logger.Fatal("Error : Failed to setup RabbitListener messages were : " + messages);
+        }
         private ResultObj DeclareQueues()
         {
             var result = new ResultObj();
@@ -111,25 +114,30 @@ namespace NetworkMonitor.Objects.Repository
                 {
                     case "paymentWakeUp":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-
                         rabbitMQObj.Consumer.Received += (model, ea) =>
                     {
                         result = WakeUp();
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                     };
-                    break;
+                        break;
                     case "paymentComplete":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-
                         rabbitMQObj.Consumer.Received += (model, ea) =>
                     {
                         result = PaymentComplete(ConvertToObject<PaymentTransaction>(model, ea));
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                     };
                         break;
+                    case "paymentCheck":
+                        rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
+                        rabbitMQObj.Consumer.Received += (model, ea) =>
+                    {
+                        result = PaymentCheck();
+                        rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                    };
+                        break;
                 }
             });
-
                 result.Success = true;
                 result.Message += " Success : Declared all consumers ";
             }
@@ -153,7 +161,6 @@ namespace NetworkMonitor.Objects.Repository
                         rabbitMQObj.ConnectChannel.BasicConsume(queue: rabbitMQObj.QueueName,
                             autoAck: false,
                             consumer: rabbitMQObj.Consumer
-
                             );
                     });
                 result.Success = true;
@@ -181,13 +188,10 @@ namespace NetworkMonitor.Objects.Repository
             catch (Exception e)
             {
                 _logger.Error("Error : Unable to convert Object. Error was : " + e.ToString());
-
             }
-
             return result;
         }
-
- private T ConvertToList<T>(object sender, BasicDeliverEventArgs @event) where T : class
+        private T ConvertToList<T>(object sender, BasicDeliverEventArgs @event) where T : class
         {
             T result = null;
             try
@@ -200,12 +204,9 @@ namespace NetworkMonitor.Objects.Repository
             catch (Exception e)
             {
                 _logger.Error("Error : Unable to convert Object. Error was : " + e.ToString());
-
             }
-
             return result;
         }
-
         public ResultObj WakeUp()
         {
             ResultObj result = new ResultObj();
@@ -213,7 +214,7 @@ namespace NetworkMonitor.Objects.Repository
             result.Message = "MessageAPI : WakeUp : ";
             try
             {
-                result=_stripeService.WakeUp();
+                result = _stripeService.WakeUp();
                 _logger.Info(result.Message);
             }
             catch (Exception e)
@@ -225,15 +226,33 @@ namespace NetworkMonitor.Objects.Repository
             }
             return result;
         }
-
-          public ResultObj PaymentComplete(PaymentTransaction paymentTransaction)
+        public ResultObj PaymentCheck()
+        {
+            ResultObj result = new ResultObj();
+            result.Success = false;
+            result.Message = "MessageAPI : PaymentCheck : ";
+            try
+            {
+                result = _stripeService.PaymentCheck();
+                _logger.Info(result.Message);
+            }
+            catch (Exception e)
+            {
+                result.Data = null;
+                result.Success = false;
+                result.Message += "Error : Failed to receive message : Error was : " + e.Message + " ";
+                _logger.Error(result.Message);
+            }
+            return result;
+        }
+        public ResultObj PaymentComplete(PaymentTransaction paymentTransaction)
         {
             ResultObj result = new ResultObj();
             result.Success = false;
             result.Message = "MessageAPI : Payment Complete : ";
             try
             {
-                result=_stripeService.PaymentComplete(paymentTransaction);
+                result = _stripeService.PaymentComplete(paymentTransaction);
                 _logger.Info(result.Message);
             }
             catch (Exception e)
