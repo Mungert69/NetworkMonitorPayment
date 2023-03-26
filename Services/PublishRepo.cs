@@ -9,15 +9,15 @@ namespace NetworkMonitor.Objects.Repository
 {
     public class PublishRepo
     {
-        public static void UpdateUserSubscription(ILogger logger,RabbitListener rabbitListener, UserInfo userInfo)
+        public static void UpdateUserSubscription(ILogger logger,RabbitListener rabbitListener, PaymentTransaction paymentTransaction)
         {
-            rabbitListener.Publish<UserInfo>( "updateUserSubscription", userInfo);
-            logger.Info(" Published event updateUserSubscription for user = "+userInfo.UserID);
+            rabbitListener.Publish<PaymentTransaction>( "updateUserSubscription", paymentTransaction.UserInfo);
+            logger.Info(" Published event updateUserSubscription for user = "+paymentTransaction.UserInfo.UserID);
         }
-          public static void CreateUserSubscription(ILogger logger,RabbitListener rabbitListener, UserInfo userInfo)
+          public static void CreateUserSubscription(ILogger logger,RabbitListener rabbitListener, PaymentTransaction paymentTransaction)
         {
-            rabbitListener.Publish<UserInfo>( "createUserSubscription", userInfo);
-            logger.Info(" Published event createUserSubscription for user = "+userInfo.UserID);
+            rabbitListener.Publish<PaymentTransaction>( "createUserSubscription", paymentTransaction.UserInfo);
+            logger.Info(" Published event createUserSubscription for user = "+paymentTransaction.UserInfo.UserID);
         }
         public static void PaymentReady(ILogger logger,RabbitListener rabbitListener, bool isReady)
         {

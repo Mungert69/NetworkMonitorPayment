@@ -49,6 +49,11 @@ namespace NetworkMonitor.Objects.Repository
                 ExchangeName = "paymentWakeUp",
                 FuncName = "paymentWakeUp"
             });
+             _rabbitMQObjs.Add(new RabbitMQObj()
+            {
+                ExchangeName = "paymentComplete",
+                FuncName = "paymentComplete"
+            });
             _connection = _factory.CreateConnection();
             _publishChannel = _connection.CreateModel();
             _rabbitMQObjs.ForEach(r => r.ConnectChannel = _connection.CreateModel());
@@ -110,6 +115,14 @@ namespace NetworkMonitor.Objects.Repository
                         rabbitMQObj.Consumer.Received += (model, ea) =>
                     {
                         result = WakeUp();
+                        rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                    };
+                    case "paymentComplete":
+                        rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
+
+                        rabbitMQObj.Consumer.Received += (model, ea) =>
+                    {
+                        result = PaymentComplete(ConvertToObject<PaymentTransaction>(model, ea));
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                     };
                         break;
@@ -200,6 +213,26 @@ namespace NetworkMonitor.Objects.Repository
             try
             {
                 result=_stripeService.WakeUp();
+                _logger.Info(result.Message);
+            }
+            catch (Exception e)
+            {
+                result.Data = null;
+                result.Success = false;
+                result.Message += "Error : Failed to receive message : Error was : " + e.Message + " ";
+                _logger.Error(result.Message);
+            }
+            return result;
+        }
+
+          public ResultObj PaymentComplete()
+        {
+            ResultObj result = new ResultObj();
+            result.Success = false;
+            result.Message = "MessageAPI : Payment Complete : ";
+            try
+            {
+                result=_stripeService.PaymentComplete();
                 _logger.Info(result.Message);
             }
             catch (Exception e)

@@ -95,12 +95,21 @@ namespace NetworkMonitor.Payment.Controllers
             var session = await service.GetAsync(sessionId);
             return Ok(session);
         }
-        [HttpPost("customer-portal")]
-        public async Task<IActionResult> CustomerPortal()
+        [HttpGet("customer-portal/{customerId}")]
+        public async Task<IActionResult> CustomerPortal([FromRoute] string customerId)
         {
-            // For demonstration purposes, we're using the Checkout session to retrieve the customer ID.
-            // Typically this is stored alongside the authenticated user in your database.
-            string sessionId = Request.Form["session_Id"];
+             if (customerId==null || customerId=="" || customerId.Length>100){
+                string message="Customer Portal Request : Malformed CustomerID .";
+                _logger.Error(message);
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = message,
+                    }
+                });
+             }
+             /*string sessionId = Request.Form["session_Id"];
             string customerId = Request.Form["customer_Id"];
             if (customerId == null)
             {
@@ -108,8 +117,7 @@ namespace NetworkMonitor.Payment.Controllers
                 var checkoutSession = await checkoutService.GetAsync(sessionId);
                 customerId = checkoutSession.CustomerId;
             }
-            // This is the URL to which your customer will return after
-            // they are done managing billing in the Customer Portal.
+            */
             var returnUrl = this.options.Value.Domain;
             var options = new Stripe.BillingPortal.SessionCreateOptions
             {
