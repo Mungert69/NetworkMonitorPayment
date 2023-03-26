@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -13,13 +13,18 @@ using Stripe;
 using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Payment.Models;
 using NetworkMonitor.Objects.Factory;
+using HostInitActions;
+
 
 namespace NetworkMonitor.Payment
 {
     public class Startup
     {
+        private readonly CancellationTokenSource _cancellationTokenSource;
+
         public Startup(IConfiguration configuration)
         {
+              _cancellationTokenSource = new CancellationTokenSource();
             _config = configuration;
         }
 
@@ -55,6 +60,13 @@ namespace NetworkMonitor.Payment
 
             services.AddSingleton<IStripeService,StripeService>();
             services.AddSingleton<INetLoggerFactory,NetLoggerFactory>();
+            services.AddSingleton(_cancellationTokenSource);
+
+            services.AddAsyncServiceInitialization()
+        .AddInitAction<IStripeService>(async (stripeService) =>
+        {
+            await stripeService.Init();
+        });
 
             services.AddControllersWithViews().AddNewtonsoftJson(options =>
             {
@@ -66,8 +78,11 @@ namespace NetworkMonitor.Payment
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env,IHostApplicationLifetime appLifetime)
         {
+              appLifetime.ApplicationStopping.Register(() => {
+                _cancellationTokenSource.Cancel();
+            });
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

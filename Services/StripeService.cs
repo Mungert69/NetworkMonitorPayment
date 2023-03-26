@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NetworkMonitor.Objects;
 using NetworkMonitor.Objects.Repository;
@@ -21,44 +22,85 @@ namespace NetworkMonitor.Payment.Services
         ResultObj PaymentComplete(PaymentTransaction paymentTransaction);
         ResultObj UpdateUserSubscription(Subscription session);
         ResultObj CreateUserSubscription(Stripe.Checkout.Session session);
+        Task Init();
     }
     public class StripeService : IStripeService
     {
+        CancellationToken _token;
         private Dictionary<string, string> _sessionList = new Dictionary<string, string>();
         private List<PaymentTransaction> _paymentTransactions = new List<PaymentTransaction>();
         private RabbitListener _rabbitRepo;
         private ILogger _logger;
         public readonly IOptions<PaymentOptions> options;
-        public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options)
+        public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource)
         {
+            _token=cancellationTokenSource.Token;
             this.options = options;
             _logger = loggerFactory.GetLogger("StripeService");
-            try
-            {
-                FileRepo.CheckFileExists("PaymentTransactions", _logger);
-                _paymentTransactions = FileRepo.GetStateStringJsonZ<List<PaymentTransaction>>("PaymentTranactions");
-                int count = 0;
-                if (_paymentTransactions != null)
-                {
-                    count = _paymentTransactions.Count;
-                }
-                _logger.Info(" Loaded " + count + " PaymentTranctions from State.");
-            }
-            catch (Exception e)
-            {
-                _logger.Error(" Failed to load PaymentTransactions from State. Error was : " + e.ToString());
-            }
-            if (_paymentTransactions == null)
-            {
-                _paymentTransactions = new List<PaymentTransaction>();
-            }
-            if (_paymentTransactions.Count == 0)
-            {
-                _paymentTransactions.Add(new PaymentTransaction());
-            }
-            _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.InstanceName, this.options.Value.HostName);
+        }
+        public Task Init()
+        {
+            return Task.Run(() =>
+               {
+                   var result = new ResultObj();
+                   result.Message = " Init Stripe Service : ";
+                   try
+                   {
+                       _token.Register(() => this.Shutdown());
+                       FileRepo.CheckFileExists("PaymentTransactions", _logger);
+                       _paymentTransactions = FileRepo.GetStateStringJsonZ<List<PaymentTransaction>>("PaymentTransactions");
+                       int count = 0;
+                       if (_paymentTransactions != null)
+                       {
+                           count = _paymentTransactions.Count;
+                       }
+                       result.Message += " Loaded " + count + " PaymentTranctions from State. ";
+                       result.Success = true;
+                   }
+                   catch (Exception e)
+                   {
+                       result.Success = false;
+                       result.Message += " Failed to load PaymentTransactions from State. Error was : " + e.ToString() + " . ";
+                   }
+                   if (_paymentTransactions == null)
+                   {
+                       _paymentTransactions = new List<PaymentTransaction>();
+                   }
+                   if (_paymentTransactions.Count == 0)
+                   {
+                       _paymentTransactions.Add(new PaymentTransaction());
+                   }
+                   try
+                   {
+                       _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.InstanceName, this.options.Value.HostName);
+                   }
+                   catch (Exception e)
+                   {
+                       result.Message += " Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
+                       result.Success = false;
+                   }
+                   result.Message += " Finished StripeService Init ";
+                   result.Success = result.Success && true;
+                   if (result.Success)
+                       _logger.Info(result.Message);
+                   else _logger.Fatal(result.Message);
+               });
         }
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
+        public void Shutdown()
+        {
+            _logger.Warn(" : SHUTDOWN started :");
+            var result = SaveTransactions();
+            if (result.Success)
+            {
+                _logger.Info(result.Message);
+            }
+            else
+            {
+                _logger.Error(result.Message);
+            }
+            _logger.Warn(" : SHUTDOWN completed :");
+        }
         public ResultObj PaymentCheck()
         {
             var result = new ResultObj();
@@ -83,7 +125,7 @@ namespace NetworkMonitor.Payment.Services
             try
             {
                 FileRepo.SaveStateJsonZ<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
-                result.Message = " Save Transactions";
+                result.Message = " Save Transactions Completed ";
                 result.Success = true;
             }
             catch (Exception e)
