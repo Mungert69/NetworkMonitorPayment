@@ -52,7 +52,10 @@ namespace NetworkMonitor.Payment.Services
             }
             if (_paymentTransactions ==null){
                 _paymentTransactions=new List<PaymentTransaction>();
-                _paymentTransactions.Add(new PaymentTransaction());
+               
+            }
+            if (_paymentTransactions.Count==0){
+                 _paymentTransactions.Add(new PaymentTransaction());
             }
             _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.InstanceName, this.options.Value.HostName);
         }
