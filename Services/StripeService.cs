@@ -106,6 +106,11 @@ namespace NetworkMonitor.Payment.Services
             var result = new ResultObj();
             try
             {
+                _paymentTransactions.OrderBy(o => o.EventDate).ToList().ForEach(p => {
+                    if (p.IsUpdate)  PublishRepo.UpdateUserSubscription(_logger, _rabbitRepo, p);
+                    else PublishRepo.CreateUserSubscription(_logger, _rabbitRepo, p);  
+                    // TODO : add a delay in here.           
+                });
                 PublishRepo.PaymentReady(_logger, _rabbitRepo, true);
                 result.Message = " Payment Transaction Queue Checked";
                 result.Success = true;

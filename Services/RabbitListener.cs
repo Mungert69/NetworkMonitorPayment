@@ -45,7 +45,8 @@ namespace NetworkMonitor.Objects.Repository
             _rabbitMQObjs.Add(new RabbitMQObj()
             {
                 ExchangeName = "paymentWakeUp",
-                FuncName = "paymentWakeUp"
+                FuncName = "paymentWakeUp",
+                MessageTimeout=60000
             });
             _rabbitMQObjs.Add(new RabbitMQObj()
             {
@@ -55,7 +56,8 @@ namespace NetworkMonitor.Objects.Repository
             _rabbitMQObjs.Add(new RabbitMQObj()
             {
                 ExchangeName = "paymentCheck",
-                FuncName = "paymentCheck"
+                FuncName = "paymentCheck",
+                MessageTimeout=60000
             });
             _connection = _factory.CreateConnection();
             _publishChannel = _connection.CreateModel();
@@ -79,13 +81,19 @@ namespace NetworkMonitor.Objects.Repository
             {
                 _rabbitMQObjs.ForEach(rabbitMQObj =>
                     {
+                        var args = new Dictionary<string, object>();
+                        if (rabbitMQObj.MessageTimeout!=0){
+                            args.Add("x-message-ttl", rabbitMQObj.MessageTimeout);
+                        }
+                        else args=null;
                         rabbitMQObj.QueueName = _instanceName + "-" + rabbitMQObj.ExchangeName;
                         rabbitMQObj.ConnectChannel.ExchangeDeclare(exchange: rabbitMQObj.ExchangeName, type: ExchangeType.Fanout, durable: true);
                         rabbitMQObj.ConnectChannel.QueueDeclare(queue: rabbitMQObj.QueueName,
                                              durable: true,
                                              exclusive: false,
                                              autoDelete: true,
-                                             arguments: null);
+                                             arguments: args
+                                             );
                         rabbitMQObj.ConnectChannel.QueueBind(queue: rabbitMQObj.QueueName,
                                           exchange: rabbitMQObj.ExchangeName,
                                           routingKey: string.Empty);
