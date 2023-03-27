@@ -72,7 +72,7 @@ namespace NetworkMonitor.Payment.Services
                    }
                    try
                    {
-                       _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.InstanceName, this.options.Value.HostName);
+                       _rabbitRepo = new RabbitListener(_logger, this, this.options.Value.RabbitInstanceName, this.options.Value.RabbitHostName);
                    }
                    catch (Exception e)
                    {

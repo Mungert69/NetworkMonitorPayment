@@ -46,8 +46,8 @@ namespace NetworkMonitor.Payment
                 options.SecretKey = _config.GetValue<string>("StripeSecretKey");
                 options.WebhookSecret = _config.GetValue<string>("StripeWebhookSecret");
                 options.Domain = _config.GetValue<string>("Domain");
-                options.InstanceName=_config.GetValue<string>("InstanceName");
-                options.HostName=_config.GetValue<string>("Hostname");
+                options.RabbitInstanceName=_config.GetValue<string>("RabbitInstanceName");
+                options.RabbitHostName=_config.GetValue<string>("RabbitHostName");
                 options.Products=new List<ProductObj>();
                  _config.GetSection("Products").Bind(options.Products);
            
