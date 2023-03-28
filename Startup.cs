@@ -13,6 +13,7 @@ using Stripe;
 using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Payment.Models;
 using NetworkMonitor.Objects.Factory;
+using NetworkMonitor.Objects;
 using HostInitActions;
 
 
@@ -46,8 +47,9 @@ namespace NetworkMonitor.Payment
                 options.SecretKey = _config.GetValue<string>("StripeSecretKey");
                 options.WebhookSecret = _config.GetValue<string>("StripeWebhookSecret");
                 options.Domain = _config.GetValue<string>("Domain");
-                options.RabbitInstanceName=_config.GetValue<string>("RabbitInstanceName");
-                options.RabbitHostName=_config.GetValue<string>("RabbitHostName");
+                options.SystemUrl = _config.GetSection("SystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("SystemUrl");
+           
+           
                 options.Products=new List<ProductObj>();
                  _config.GetSection("Products").Bind(options.Products);
            
