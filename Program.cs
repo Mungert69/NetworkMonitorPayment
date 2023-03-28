@@ -22,8 +22,8 @@ namespace NetworkMonitor.Payment
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
          WebHost.CreateDefaultBuilder(args).UseKestrel(options =>
             {
-                options.Listen(IPAddress.Any, 2058);
-                options.Listen(IPAddress.Any, 2059, listenOptions =>
+                options.Listen(IPAddress.Any, 2082);
+                options.Listen(IPAddress.Any, 2083, listenOptions =>
                 {
                     listenOptions.UseHttps("https.pfx", "Ac£0462110");
                 });
