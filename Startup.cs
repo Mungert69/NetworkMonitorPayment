@@ -43,15 +43,15 @@ namespace NetworkMonitor.Payment
 
             services.Configure<PaymentOptions>(options =>
             {
-                options.PublishableKey = _config.GetValue<string>("StripePublishableKey");
-                options.SecretKey = _config.GetValue<string>("StripeSecretKey");
-                options.WebhookSecret = _config.GetValue<string>("StripeWebhookSecret");
-                options.Domain = _config.GetValue<string>("Domain");
+                options.StripePublishableKey = _config.GetValue<string>("StripePublishableKey");
+                options.StripeSecretKey = _config.GetValue<string>("StripeSecretKey");
+                options.StripeWebhookSecret = _config.GetValue<string>("StripeWebhookSecret");
+                options.StripeDomain = _config.GetValue<string>("Domain");
                 options.SystemUrl = _config.GetSection("SystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("SystemUrl");
            
            
-                options.Products=new List<ProductObj>();
-                 _config.GetSection("Products").Bind(options.Products);
+                options.StripeProducts=new List<ProductObj>();
+                 _config.GetSection("Products").Bind(options.StripeProducts);
            
             });
              services.AddCors(options =>

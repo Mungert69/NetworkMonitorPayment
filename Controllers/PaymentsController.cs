@@ -24,22 +24,22 @@ namespace NetworkMonitor.Payment.Controllers
             _logger = loggerFactory.GetLogger("PaymentsController");
             _stripeService = stripeService;
             this.options = options;
-            this.client = new StripeClient(this.options.Value.SecretKey);
+            this.client = new StripeClient(this.options.Value.StripeSecretKey);
         }
         [HttpGet("config")]
         public ConfigResponse Setup()
         {
             return new ConfigResponse
             {
-                ProPrice = this.options.Value.Products[0].PriceId,
-                BasicPrice = this.options.Value.Products[1].PriceId,
-                PublishableKey = this.options.Value.PublishableKey,
+                ProPrice = this.options.Value.StripeProducts[0].PriceId,
+                BasicPrice = this.options.Value.StripeProducts[1].PriceId,
+                PublishableKey = this.options.Value.StripePublishableKey,
             };
         }
         [HttpGet("CreateCheckoutSession/{userId}/{productName}")]
         public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId, [FromRoute] string productName)
         {
-             ProductObj? productObj=this.options.Value.Products.Where(w => w.ProductName==productName).FirstOrDefault();
+             ProductObj? productObj=this.options.Value.StripeProducts.Where(w => w.ProductName==productName).FirstOrDefault();
              if (productObj==null || productObj.PriceId==null){
                 string message=" Unable to find product info for product name "+productName+ " . ";
                 _logger.Error(message);
@@ -53,8 +53,8 @@ namespace NetworkMonitor.Payment.Controllers
              }
             var options = new SessionCreateOptions
             {
-                SuccessUrl = this.options.Value.Domain + "?success=true&session_id={CHECKOUT_SESSION_ID}&initViewSub=true",
-                CancelUrl = this.options.Value.Domain + "?canceled=true",
+                SuccessUrl = this.options.Value.StripeDomain + "?success=true&session_id={CHECKOUT_SESSION_ID}&initViewSub=true",
+                CancelUrl = this.options.Value.StripeDomain + "?canceled=true",
                 Mode = "subscription",
                   
                  LineItems = new List<SessionLineItemOptions>
@@ -118,7 +118,7 @@ namespace NetworkMonitor.Payment.Controllers
                 customerId = checkoutSession.CustomerId;
             }
             */
-            var returnUrl = this.options.Value.Domain;
+            var returnUrl = this.options.Value.StripeDomain;
             var options = new Stripe.BillingPortal.SessionCreateOptions
             {
                 Customer = customerId,
@@ -139,7 +139,7 @@ namespace NetworkMonitor.Payment.Controllers
                 stripeEvent = EventUtility.ConstructEvent(
                     json,
                     Request.Headers["Stripe-Signature"],
-                    this.options.Value.WebhookSecret
+                    this.options.Value.StripeWebhookSecret
                 );
                 Console.WriteLine($"Webhook notification with type: {stripeEvent.Type} found for {stripeEvent.Id}");
             }

@@ -3,13 +3,15 @@ using NetworkMonitor.Objects;
 using System.Collections.Generic;
 public class PaymentOptions
 {
-    public string PublishableKey { get; set; }
-    public string SecretKey { get; set; }
-    public string WebhookSecret { get; set; }
-    public string Domain { get; set; }
+    public string StripePublishableKey { get; set; }
+    public string StripeSecretKey { get; set; }
+    public string StripeWebhookSecret { get; set; }
+    public string StripeDomain { get; set; }
+    public string PayPalClientID { get; set; }
+    public string PayPalSecret { get; set; }
     public SystemUrl SystemUrl { get; set; }
-    public List<ProductObj> Products { get => _products; set => _products = value; }
+    public List<ProductObj> StripeProducts { get => _stripeProducts; set => _stripeProducts = value; }
 
-    private List<ProductObj> _products;
+    private List<ProductObj> _stripeProducts;
 
 }

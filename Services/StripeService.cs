@@ -192,7 +192,7 @@ namespace NetworkMonitor.Payment.Services
                 SubscriptionItem item = session.Items.FirstOrDefault();
                 if (item != null)
                 {
-                    ProductObj paymentObj = this.options.Value.Products.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
+                    ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
                     if (paymentObj != null)
                     {
                         userInfo.AccountType = paymentObj.ProductName;
