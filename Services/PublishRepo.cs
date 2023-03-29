@@ -4,26 +4,26 @@ using System.Linq;
 using NetworkMonitor.Objects.ServiceMessage;
 using System.Diagnostics;
 using MetroLog;
-using System.Threading;
+using System.Threading.Tasks;
 namespace NetworkMonitor.Objects.Repository
 {
     public class PublishRepo
     {
-        public static void PaymentReady(ILogger logger, RabbitListener rabbitListener, bool isReady)
+        public static async Task PaymentReadyAsync(ILogger logger, RabbitListener rabbitListener, bool isReady)
         {
             var paymentInitObj = new PaymentServiceInitObj();
             paymentInitObj.IsPaymentServiceReady = isReady;
-            rabbitListener.Publish<PaymentServiceInitObj>("paymentServiceReady", paymentInitObj);
+            await rabbitListener.PublishAsync<PaymentServiceInitObj>("paymentServiceReady", paymentInitObj);
             logger.Info(" Published event PaymentServiceItitObj.IsPaymentServiceReady = " + isReady);
         }
-        public static void UpdateUserSubscription(ILogger logger, RabbitListener rabbitListener, PaymentTransaction paymentTransaction)
+        public static async Task UpdateUserSubscriptionAsync(ILogger logger, RabbitListener rabbitListener, PaymentTransaction paymentTransaction)
         {
-            rabbitListener.Publish<PaymentTransaction>("updateUserSubscription", paymentTransaction);
+            await rabbitListener.PublishAsync<PaymentTransaction>("updateUserSubscription", paymentTransaction);
             logger.Info(" Published event updateUserSubscription for user = " + paymentTransaction.UserInfo.UserID);
         }
-        public static void CreateUserSubscription(ILogger logger, RabbitListener rabbitListener, PaymentTransaction paymentTransaction)
+        public static async Task CreateUserSubscriptionAsync(ILogger logger, RabbitListener rabbitListener, PaymentTransaction paymentTransaction)
         {
-            rabbitListener.Publish<PaymentTransaction>("createUserSubscription", paymentTransaction);
+            await rabbitListener.PublishAsync<PaymentTransaction>("createUserSubscription", paymentTransaction);
             logger.Info(" Published event createUserSubscription for user = " + paymentTransaction.UserInfo.UserID);
         }
     }

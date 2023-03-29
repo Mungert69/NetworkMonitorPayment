@@ -2,6 +2,7 @@
 using RabbitMQ.Client.Events;
 using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Payment.Services;
+using System.Threading.Tasks;
 
 using System;
 
@@ -48,9 +49,9 @@ namespace NetworkMonitor.Objects.Repository
                 {
                     case "paymentWakeUp":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received += (model, ea) =>
+                        rabbitMQObj.Consumer.Received += async(model, ea) =>
                     {
-                        result = WakeUp();
+                        result = await WakeUp();
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                     };
                         break;
@@ -64,9 +65,9 @@ namespace NetworkMonitor.Objects.Repository
                         break;
                     case "paymentCheck":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received += (model, ea) =>
+                        rabbitMQObj.Consumer.Received += async (model, ea) =>
                     {
-                        result = PaymentCheck();
+                        result = await PaymentCheck();
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                     };
                         break;
@@ -84,14 +85,14 @@ namespace NetworkMonitor.Objects.Repository
             }
             return result;
         }
-        public ResultObj WakeUp()
+        public async Task<ResultObj> WakeUp()
         {
             ResultObj result = new ResultObj();
             result.Success = false;
             result.Message = "MessageAPI : WakeUp : ";
             try
             {
-                result = _stripeService.WakeUp();
+                result = await _stripeService.WakeUp();
                 _logger.Info(result.Message);
             }
             catch (Exception e)
@@ -103,14 +104,14 @@ namespace NetworkMonitor.Objects.Repository
             }
             return result;
         }
-        public ResultObj PaymentCheck()
+        public async Task<ResultObj> PaymentCheck()
         {
             ResultObj result = new ResultObj();
             result.Success = false;
             result.Message = "MessageAPI : PaymentCheck : ";
             try
             {
-                result = _stripeService.PaymentCheck();
+                result = await _stripeService.PaymentCheck();
                 _logger.Info(result.Message);
             }
             catch (Exception e)

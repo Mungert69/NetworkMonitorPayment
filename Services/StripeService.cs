@@ -17,11 +17,11 @@ namespace NetworkMonitor.Payment.Services
     public interface IStripeService
     {
         Dictionary<string, string> SessionList { get; set; }
-        ResultObj WakeUp();
-        ResultObj PaymentCheck();
+        Task<ResultObj> WakeUp();
+        Task<ResultObj> PaymentCheck();
         ResultObj PaymentComplete(PaymentTransaction paymentTransaction);
-        ResultObj UpdateUserSubscription(Subscription session);
-        ResultObj CreateUserSubscription(Stripe.Checkout.Session session);
+        Task<ResultObj> UpdateUserSubscription(Subscription session);
+        Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session);
         Task Init();
     }
     public class StripeService : IStripeService
@@ -102,17 +102,32 @@ namespace NetworkMonitor.Payment.Services
             }
             _logger.Warn(" : SHUTDOWN completed :");
         }
-        public ResultObj PaymentCheck()
+        public async Task<ResultObj> PaymentCheck()
         {
             var result = new ResultObj();
             try
             {
-                _paymentTransactions.OrderBy(o => o.EventDate).ToList().ForEach(p => {
-                    if (p.IsUpdate)  PublishRepo.UpdateUserSubscription(_logger, _rabbitRepo, p);
-                    else PublishRepo.CreateUserSubscription(_logger, _rabbitRepo, p);  
-                    // TODO : add a delay in here.           
+                // get a list of PaymentTransactions that are not complete and order by IsUpdate then EventDate.
+            
+                _paymentTransactions.Where(w => w.IsComplete==false).OrderBy(o => o.IsUpdate).ThenBy( o => o.EventDate).ToList().ForEach(async p => {
+                   // Using p.IsUpdate to determine if this is an update or a new subscription. Publish to RabbitMQ.
+                    if (p.IsUpdate)
+                    {
+                        await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepo, p);
+                    }
+                    else
+                    {
+                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepo, p);
+                    }
+
+
+                    Task.Delay(500).Wait();
+                    _logger.Info("Retry Payment Transaction : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo + " : " + p.Id + " : " + p.EventDate);
+                    p.IsComplete = true;
+                    p.CompletedDate = DateTime.Now;
+                    SaveTransactions();
                 });
-                PublishRepo.PaymentReady(_logger, _rabbitRepo, true);
+                await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepo, true);
                 result.Message = " Payment Transaction Queue Checked";
                 result.Success = true;
                 _logger.Info(result.Message);
@@ -150,8 +165,10 @@ namespace NetworkMonitor.Payment.Services
                 var updatePaymentTransaction = _paymentTransactions.Where(w => w.Id == paymentTransaction.Id).FirstOrDefault();
                 if (updatePaymentTransaction != null)
                 {
-                    _paymentTransactions.Remove(updatePaymentTransaction);
-                    result.Message = " Payment Complete ";
+                    paymentTransaction.IsComplete = true;
+                    paymentTransaction.CompletedDate = DateTime.Now;
+                    // log the payment transaction to result.Message. Showing Created or Updatee, UserInfo, ID and the EventDate.
+                    result.Message = " Payment Complete => Payment Transaction : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
                     result.Success = true;
                 }
                 else
@@ -168,7 +185,7 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-        public ResultObj UpdateUserSubscription(Subscription session)
+        public async Task<ResultObj> UpdateUserSubscription(Subscription session)
         {
             var result = new ResultObj();
             var userInfo = new UserInfo();
@@ -215,7 +232,7 @@ namespace NetworkMonitor.Payment.Services
                 if (userInfo.CustomerId != null)
                 {
                     paymentTransaction.UserInfo = userInfo;
-                    PublishRepo.UpdateUserSubscription(_logger, _rabbitRepo, paymentTransaction);
+                    await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepo, paymentTransaction);
                     result.Message += " Success : Published event UpdateUserSubscription";
                     result.Success = true;
                 }
@@ -241,7 +258,7 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-        public ResultObj CreateUserSubscription(Stripe.Checkout.Session session)
+        public async Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session)
         {
             var result = new ResultObj();
             var userInfo = new UserInfo();
@@ -267,7 +284,7 @@ namespace NetworkMonitor.Payment.Services
                 if (userInfo.UserID != null)
                 {
                     paymentTransaction.UserInfo = userInfo;
-                    PublishRepo.CreateUserSubscription(_logger, _rabbitRepo, paymentTransaction);
+                    await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepo, paymentTransaction);
                     result.Message += "Success : Published event CreateUserSubscription";
                     result.Success = true;
                 }
@@ -293,14 +310,14 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-        public ResultObj WakeUp()
+        public async Task<ResultObj> WakeUp()
         {
             var result = new ResultObj();
             result.Message = " Service : WakeUp ";
             try
             {
-                PublishRepo.PaymentReady(_logger, _rabbitRepo, true);
-                result.Message += " Published paymentServiceReady event ";
+                await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepo, true);
+                result.Message += " Received Wakeup so Published paymentServiceReady event ";
                 result.Success = true;
                 _logger.Info(result.Message);
             }
