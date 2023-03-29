@@ -21,6 +21,7 @@ namespace NetworkMonitor.Objects.Repository
         public RabbitListener(ILogger logger,SystemUrl systemUrl, IStripeService stripeService): base(logger, systemUrl)
         {
             _stripeService = stripeService;
+	    Setup();
          }
         protected override void InitRabbitMQObjs()
         {
