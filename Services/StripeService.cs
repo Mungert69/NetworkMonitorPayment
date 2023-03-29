@@ -257,7 +257,7 @@ namespace NetworkMonitor.Payment.Services
                 {
                     paymentTransaction.UserInfo = userInfo;
                     PublishRepo.CreateUserSubscription(_logger, _rabbitRepo, paymentTransaction);
-                    result.Message += "Success : Published event UpdateUserSubscription";
+                    result.Message += "Success : Published event CreateUserSubscription";
                     result.Success = true;
                 }
                 else
