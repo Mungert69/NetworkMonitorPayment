@@ -23,7 +23,7 @@ namespace NetworkMonitor.Objects.Repository
             {
                 ExchangeName = "paymentWakeUp",
                 FuncName = "paymentWakeUp",
-                MessageTimeout=60000
+                MessageTimeout=59000
             });
             _rabbitMQObjs.Add(new RabbitMQObj()
             {
@@ -34,7 +34,7 @@ namespace NetworkMonitor.Objects.Repository
             {
                 ExchangeName = "paymentCheck",
                 FuncName = "paymentCheck",
-                MessageTimeout=60000
+                MessageTimeout=59000
             });
          }
         protected override ResultObj DeclareConsumers()

@@ -48,7 +48,7 @@ namespace NetworkMonitor.Payment.Services
                    {
                        _token.Register(() => this.Shutdown());
                        FileRepo.CheckFileExists("PaymentTransactions", _logger);
-                       _paymentTransactions = FileRepo.GetStateStringJsonZ<List<PaymentTransaction>>("PaymentTransactions");
+                       _paymentTransactions = FileRepo.GetStateJson<List<PaymentTransaction>>("PaymentTransactions");
                        int count = 0;
                        if (_paymentTransactions != null)
                        {
@@ -113,24 +113,24 @@ namespace NetworkMonitor.Payment.Services
                    // Using p.IsUpdate to determine if this is an update or a new subscription. Publish to RabbitMQ.
                     if (p.IsUpdate)
                     {
-                        await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepo, p);
+                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepo, p);
                     }
                     else
                     {
-                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepo, p);
+                        await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepo, p);
                     }
 
 
                     Task.Delay(500).Wait();
-                    _logger.Info("Retry Payment Transaction : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo + " : " + p.Id + " : " + p.EventDate);
+                    result.Message+=(" Retry Payment Transaction : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate+" . ");
                     p.IsComplete = true;
                     p.CompletedDate = DateTime.Now;
                     SaveTransactions();
                 });
                 await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepo, true);
-                result.Message = " Payment Transaction Queue Checked";
+                result.Message = " Payment Transaction Queue Checked ";
                 result.Success = true;
-                _logger.Info(result.Message);
+                //_logger.Info(result.Message);
             }
             catch (Exception e)
             {
@@ -145,7 +145,7 @@ namespace NetworkMonitor.Payment.Services
             var result = new ResultObj();
             try
             {
-                FileRepo.SaveStateJsonZ<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
+                FileRepo.SaveStateJson<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
                 result.Message = " Save Transactions Completed ";
                 result.Success = true;
             }
@@ -168,7 +168,7 @@ namespace NetworkMonitor.Payment.Services
                     paymentTransaction.IsComplete = true;
                     paymentTransaction.CompletedDate = DateTime.Now;
                     // log the payment transaction to result.Message. Showing Created or Updatee, UserInfo, ID and the EventDate.
-                    result.Message = " Payment Complete => Payment Transaction : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
+                    result.Message = " Payment Complete => Payment Transaction for Customer "+paymentTransaction.UserInfo.CustomerId+" : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
                     result.Success = true;
                 }
                 else
