@@ -62,14 +62,7 @@ namespace NetworkMonitor.Payment.Services
                        result.Success = false;
                        result.Message += " Failed to load PaymentTransactions from State. Error was : " + e.ToString() + " . ";
                    }
-                   if (_paymentTransactions == null)
-                   {
-                       _paymentTransactions = new List<PaymentTransaction>();
-                   }
-                   if (_paymentTransactions.Count == 0)
-                   {
-                       _paymentTransactions.Add(new PaymentTransaction());
-                   }
+                  
                    try
                    {
                        _rabbitRepo = new RabbitListener(_logger,this.options.Value.SystemUrl, this);
@@ -78,6 +71,14 @@ namespace NetworkMonitor.Payment.Services
                    {
                        result.Message += " Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
                        result.Success = false;
+                   }
+                    if (_paymentTransactions == null)
+                   {
+                       _paymentTransactions = new List<PaymentTransaction>();
+                   }
+                   if (_paymentTransactions.Count == 0)
+                   {
+                       _paymentTransactions.Add(new PaymentTransaction());
                    }
                    result.Message += " Finished StripeService Init ";
                    result.Success = result.Success && true;
