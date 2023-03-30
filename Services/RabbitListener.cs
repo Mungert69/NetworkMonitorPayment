@@ -162,7 +162,7 @@ namespace NetworkMonitor.Objects.Repository
             try
             {
                 result = _stripeService.RegisterUser(registerdUser);
-               
+               _logger.Info(result.Message);
             }
             catch (Exception ex)
             {

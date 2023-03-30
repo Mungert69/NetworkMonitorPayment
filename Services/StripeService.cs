@@ -131,7 +131,7 @@ namespace NetworkMonitor.Payment.Services
             if (RegisterdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).Count() == 0)
             {
                 RegisterdUsers.Add(registerUser);
-                result.Message += " Added User : " + registerUser.UserId + " : " + registerUser.CustomerId;
+                result.Message += " Added User : " + registerUser.UserId + " : " + registerUser.CustomerId+" : "+registerUser.ExternalUrl+" : ";
             }
             else
             {
