@@ -10,6 +10,7 @@ using Stripe.Checkout;
 using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Payment.Models;
+using NetworkMonitor.Objects;
 using MetroLog;
 namespace NetworkMonitor.Payment.Controllers
 {
@@ -26,16 +27,29 @@ namespace NetworkMonitor.Payment.Controllers
             this.options = options;
             this.client = new StripeClient(this.options.Value.StripeSecretKey);
         }
-        [HttpGet("config")]
-        public ConfigResponse Setup()
+        [HttpGet("registeruser/{userId}/{customerId}/externalUerl")]
+        public async Task<ResultObj> RegisterUser([FromRoute] string userId, [FromRoute] string customerId, [FromRoute] string externalUerl)
         {
-            return new ConfigResponse
+            var result =new ResultObj();
+           
+            try
             {
-                ProPrice = this.options.Value.StripeProducts[0].PriceId,
-                BasicPrice = this.options.Value.StripeProducts[1].PriceId,
-                PublishableKey = this.options.Value.StripePublishableKey,
-            };
+                var registerUser = new RegisterdUser(){
+                    UserId=userId,
+                    CustomerId=customerId,
+                    ExternalUrl=externalUerl};
+                result = await _stripeService.RegisterUser(registerUser);
+            }
+            catch (Exception ex)
+            {
+                string message=" Failed to Register User. Eror was : " + ex.Message;
+                _logger.Error(message );
+                result.Success = false;
+                result.Message = message;
+            }
+            return result;
         }
+       
         [HttpGet("CreateCheckoutSession/{userId}/{productName}")]
         public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId, [FromRoute] string productName)
         {

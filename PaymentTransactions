@@ -1,12 +1,12 @@
 [
   {
-    "IsUpdate": false,
-    "Id": 0,
-    "EventDate": "0001-01-01T00:00:00",
+    "IsUpdate": true,
+    "Id": 3,
+    "EventDate": "2023-03-30T00:37:49.3552113Z",
     "UserInfo": {
       "UserID": null,
       "DateCreated": "0001-01-01T00:00:00Z",
-      "HostLimit": 0,
+      "HostLimit": 300,
       "DisableEmail": false,
       "Status": "",
       "Name": "",
@@ -15,62 +15,30 @@
       "Nickname": "",
       "Sub": "",
       "Enabled": true,
-      "AccountType": "Free",
+      "AccountType": "Professional",
       "Email": "",
       "Email_verified": false,
       "Picture": "",
       "Updated_at": "0001-01-01T00:00:00Z",
       "LastLoginDate": "0001-01-01T00:00:00Z",
-      "CustomerId": "",
+      "CustomerId": "cus_NcOGamW8F6Xy04",
       "CancelAt": null,
       "MonitorIPs": []
     },
     "IsComplete": true,
     "Result": {
-      "Message": "",
-      "Success": false,
-      "Data": null
-    },
-    "CompletedDate": "2023-03-29T20:32:05.5768131+01:00"
-  },
-  {
-    "IsUpdate": false,
-    "Id": 1,
-    "EventDate": "2023-03-29T19:48:49.8759386Z",
-    "UserInfo": {
-      "UserID": "google-oauth2|118403118408200494081",
-      "DateCreated": "0001-01-01T00:00:00Z",
-      "HostLimit": 0,
-      "DisableEmail": false,
-      "Status": "",
-      "Name": "",
-      "Given_name": "",
-      "Family_name": "",
-      "Nickname": "",
-      "Sub": "",
-      "Enabled": true,
-      "AccountType": "Free",
-      "Email": "",
-      "Email_verified": false,
-      "Picture": "",
-      "Updated_at": "0001-01-01T00:00:00Z",
-      "LastLoginDate": "0001-01-01T00:00:00Z",
-      "CustomerId": "cus_NcJcFHFEU5EQaE",
-      "CancelAt": null,
-      "MonitorIPs": []
-    },
-    "IsComplete": true,
-    "Result": {
-      "Message": "SERVICE : CreateUserSubscription : Success : Published event CreateUserSubscriptionNetworkMonitor.Objects.ResultObj",
+      "Message": "SERVICE : Update User Subscription : Success : User Subcription updated",
       "Success": true,
       "Data": null
     },
-    "CompletedDate": "2023-03-29T20:58:05.4744551+01:00"
+    "CompletedDate": "2023-03-30T01:37:49.6646177+01:00",
+    "RetryCount": 0,
+    "ExternalUrl": "https://dev.com:2053"
   },
   {
     "IsUpdate": true,
     "Id": 2,
-    "EventDate": "2023-03-29T19:48:51.348486Z",
+    "EventDate": "2023-03-30T00:37:07.8543224Z",
     "UserInfo": {
       "UserID": null,
       "DateCreated": "0001-01-01T00:00:00Z",
@@ -89,16 +57,54 @@
       "Picture": "",
       "Updated_at": "0001-01-01T00:00:00Z",
       "LastLoginDate": "0001-01-01T00:00:00Z",
-      "CustomerId": "cus_NcJcFHFEU5EQaE",
+      "CustomerId": "cus_NcOGamW8F6Xy04",
       "CancelAt": null,
       "MonitorIPs": []
     },
     "IsComplete": true,
     "Result": {
-      "Message": "SERVICE : UpdateUserSubscription :  Success : Changed CustomerID cus_NcJcFHFEU5EQaE Subsciption Product to Standard Success : Published event UpdateUserSubscriptionNetworkMonitor.Objects.ResultObj",
+      "Message": "SERVICE : Update User Subscription : Success : User Subcription updated",
       "Success": true,
       "Data": null
     },
-    "CompletedDate": "2023-03-29T20:58:05.9852416+01:00"
+    "CompletedDate": "2023-03-30T01:37:08.4765096+01:00",
+    "RetryCount": 0,
+    "ExternalUrl": "https://dev.com:2053"
+  },
+  {
+    "IsUpdate": false,
+    "Id": 1,
+    "EventDate": "2023-03-30T00:37:06.4692782Z",
+    "UserInfo": {
+      "UserID": "google-oauth2|118403118408200494081",
+      "DateCreated": "0001-01-01T00:00:00Z",
+      "HostLimit": 0,
+      "DisableEmail": false,
+      "Status": "",
+      "Name": "",
+      "Given_name": "",
+      "Family_name": "",
+      "Nickname": "",
+      "Sub": "",
+      "Enabled": true,
+      "AccountType": "Free",
+      "Email": "",
+      "Email_verified": false,
+      "Picture": "",
+      "Updated_at": "0001-01-01T00:00:00Z",
+      "LastLoginDate": "0001-01-01T00:00:00Z",
+      "CustomerId": "cus_NcOGamW8F6Xy04",
+      "CancelAt": null,
+      "MonitorIPs": []
+    },
+    "IsComplete": true,
+    "Result": {
+      "Message": "SERVICE : Create User Subscription : Success : user Subcription created",
+      "Success": true,
+      "Data": null
+    },
+    "CompletedDate": "2023-03-30T01:37:08.4482308+01:00",
+    "RetryCount": 0,
+    "ExternalUrl": "https://dev.com:2053"
   }
 ]

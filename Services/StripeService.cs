@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +21,7 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> WakeUp();
         Task<ResultObj> PaymentCheck();
         ResultObj PaymentComplete(PaymentTransaction paymentTransaction);
+        Task<ResultObj> RegisterUser(RegisterdUser registerdUser);
         Task<ResultObj> UpdateUserSubscription(Subscription session);
         Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session);
         Task Init();
@@ -28,13 +30,26 @@ namespace NetworkMonitor.Payment.Services
     {
         CancellationToken _token;
         private Dictionary<string, string> _sessionList = new Dictionary<string, string>();
-        private List<PaymentTransaction> _paymentTransactions = new List<PaymentTransaction>();
-        private RabbitListener _rabbitRepo;
+        private ConcurrentBag<PaymentTransaction> _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
+        private List<RabbitListener> _rabbitListeners = new List<RabbitListener>();
         private ILogger _logger;
+
+        private List<RegisterdUser> _registerdUsers = new List<RegisterdUser>(){
+            new RegisterdUser(){
+                UserId="auth0|638d7e8300ecba59089e7ebb",
+                CustomerId="",
+                ExternalUrl="https://monitorsrv.mahadeva.co.uk:2053"
+            },
+            new RegisterdUser(){
+                UserId="google-oauth2|118403118408200494081",
+                CustomerId="",
+                ExternalUrl="https://dev.com:2053"
+            }
+        };
         public readonly IOptions<PaymentOptions> options;
         public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource)
         {
-            _token=cancellationTokenSource.Token;
+            _token = cancellationTokenSource.Token;
             this.options = options;
             _logger = loggerFactory.GetLogger("StripeService");
         }
@@ -48,7 +63,7 @@ namespace NetworkMonitor.Payment.Services
                    {
                        _token.Register(() => this.Shutdown());
                        FileRepo.CheckFileExists("PaymentTransactions", _logger);
-                       _paymentTransactions = FileRepo.GetStateJson<List<PaymentTransaction>>("PaymentTransactions");
+                       _paymentTransactions = FileRepo.GetStateJson<ConcurrentBag<PaymentTransaction>>("PaymentTransactions");
                        int count = 0;
                        if (_paymentTransactions != null)
                        {
@@ -62,24 +77,28 @@ namespace NetworkMonitor.Payment.Services
                        result.Success = false;
                        result.Message += " Failed to load PaymentTransactions from State. Error was : " + e.ToString() + " . ";
                    }
-                  
                    try
                    {
-                       _rabbitRepo = new RabbitListener(_logger,this.options.Value.SystemUrl, this);
+                       this.options.Value.SystemUrls.ForEach(f =>
+                       {
+                           _logger.Info(" : StripeService : Init : Adding RabbitListener for : " + f.ExternalUrl + " : ");
+                           _rabbitListeners.Add(new RabbitListener(_logger, f, this));
+                       });
+
                    }
                    catch (Exception e)
                    {
                        result.Message += " Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
                        result.Success = false;
                    }
-                    if (_paymentTransactions == null)
+                   if (_paymentTransactions == null)
                    {
-                       _paymentTransactions = new List<PaymentTransaction>();
+                       _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
                    }
-                   if (_paymentTransactions.Count == 0)
+                   /*if (_paymentTransactions.Count == 0)
                    {
                        _paymentTransactions.Add(new PaymentTransaction());
-                   }
+                   }*/
                    result.Message += " Finished StripeService Init ";
                    result.Success = result.Success && true;
                    if (result.Success)
@@ -102,33 +121,71 @@ namespace NetworkMonitor.Payment.Services
             }
             _logger.Warn(" : SHUTDOWN completed :");
         }
+
+        // A method that takes the paramter registerUser and adds it to the list of registerd users. Checing if it already exists first use UserId and CustomerId to match.
+        public async Task<ResultObj> RegisterUser(RegisterdUser registerUser)
+        {
+            var result = new ResultObj();
+            result.Message = " SERVICE : Register User : ";
+
+            if (_registerdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).Count() == 0)
+            {
+                _registerdUsers.Add(registerUser);
+                result.Message += " Added User : " + registerUser.UserId + " : " + registerUser.CustomerId;
+            }
+            else
+            {
+                // Update the existing user.
+                var user = _registerdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).FirstOrDefault();
+                user.CustomerId = registerUser.CustomerId;
+                user.UserId = registerUser.UserId;
+                user.ExternalUrl = registerUser.ExternalUrl;
+            }
+            result.Success = true;
+
+            return result;
+        }
+
+        // A Method to return the ExternalUrl from RegisterdUser list using the UserId or CustomerId.
+        public string GetExternalUrl(string userId, string customerId)
+        {
+            var result = "";
+            if (_registerdUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).Count() > 0)
+            {
+                result = _registerdUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).FirstOrDefault().ExternalUrl;
+            }
+            return result;
+        }
+
         public async Task<ResultObj> PaymentCheck()
         {
             var result = new ResultObj();
             try
             {
                 // get a list of PaymentTransactions that are not complete and order by IsUpdate then EventDate.
-            
-                _paymentTransactions.Where(w => w.IsComplete==false).OrderBy(o => o.IsUpdate).ThenBy( o => o.EventDate).ToList().ForEach(async p => {
-                   // Using p.IsUpdate to determine if this is an update or a new subscription. Publish to RabbitMQ.
+                _paymentTransactions.Where(w => w.IsComplete == false).OrderBy(o => o.IsUpdate).ThenBy(o => o.EventDate).ToList().ForEach(async p =>
+                {
+                    // Using p.IsUpdate to determine if this is an update or a new subscription. Publish to RabbitMQ.
                     if (p.IsUpdate)
                     {
-                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepo, p);
+                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitListeners, p);
                     }
                     else
                     {
-                        await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepo, p);
+                        await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitListeners, p);
                     }
-
-
-                    Task.Delay(500).Wait();
-                    result.Message+=(" Retry Payment Transaction : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate+" . ");
-                    p.IsComplete = true;
-                    p.CompletedDate = DateTime.Now;
+                    result.Message += (" Retry " + p.RetryCount + " of Payment Transaction  for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
+                    p.RetryCount++;
+                    if (p.RetryCount > 5)
+                    {
+                        //TODO notify user of failure.
+                        _logger.Error(" Payment Transaction Failed for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
+                    }
                     SaveTransactions();
+                    Task.Delay(500).Wait();
                 });
-                await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepo, true);
-                result.Message = " Payment Transaction Queue Checked ";
+                await PublishRepo.PaymentReadyAsync(_logger, _rabbitListeners, true);
+                result.Message += " Payment Transaction Queue Checked ";
                 result.Success = true;
                 //_logger.Info(result.Message);
             }
@@ -145,7 +202,7 @@ namespace NetworkMonitor.Payment.Services
             var result = new ResultObj();
             try
             {
-                FileRepo.SaveStateJson<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
+                FileRepo.SaveStateJson<ConcurrentBag<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
                 result.Message = " Save Transactions Completed ";
                 result.Success = true;
             }
@@ -165,16 +222,47 @@ namespace NetworkMonitor.Payment.Services
                 var updatePaymentTransaction = _paymentTransactions.Where(w => w.Id == paymentTransaction.Id).FirstOrDefault();
                 if (updatePaymentTransaction != null)
                 {
-                    paymentTransaction.IsComplete = true;
-                    paymentTransaction.CompletedDate = DateTime.Now;
-                    // log the payment transaction to result.Message. Showing Created or Updatee, UserInfo, ID and the EventDate.
-                    result.Message = " Payment Complete => Payment Transaction for Customer "+paymentTransaction.UserInfo.CustomerId+" : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
-                    result.Success = true;
+                    // If transaction is alreay complete just log the result.
+                    if (updatePaymentTransaction.IsComplete)
+                    {
+                        result.Message = " !!Already completed.";
+                        result.Success = true;
+                        return result;
+                    }
+                    updatePaymentTransaction.Result = paymentTransaction.Result;
+                    if (paymentTransaction.IsComplete)
+                    {
+                        updatePaymentTransaction.IsComplete = true;
+                        updatePaymentTransaction.CompletedDate = DateTime.Now;
+                        // log the payment transaction to result.Message. Showing Created or Updatee, UserInfo, ID and the EventDate.
+                        result.Message += " Payment Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
+                        result.Success = true;
+                    }
+                    else
+                    {
+                        var resultService = paymentTransaction.Result;
+                        if (resultService == null)
+                        {
+                            result.Message += " Monitor Serivce Result for Transaction with ID " + paymentTransaction.Id + " Fail Error was : " + " Result is null ";
+                            result.Success = false;
+                        }
+                        else
+                        {
+                            string? message = paymentTransaction.Result.Message;
+                            result.Message += " Monitor Serivce Result for Transaction with ID " + paymentTransaction.Id + " Fail Error was : " + message;
+                            if (resultService.Data != null)
+                            {
+                                result.Message += " :: " + resultService.Data.ToString();
+                            }
+                            result.Success = false;
+                        }
+                    }
+                    SaveTransactions();
                 }
                 else
                 {
-                    result.Message = " Failed find PaymentTransaction with ID " + paymentTransaction.Id;
-                    result.Success = true;
+                    result.Message = " Failed to Find PaymentTransaction with Id " + paymentTransaction.Id;
+                    result.Success = false;
                 }
             }
             catch (Exception e)
@@ -196,7 +284,7 @@ namespace NetworkMonitor.Payment.Services
             }
             var paymentTransaction = new PaymentTransaction()
             {
-                Id = id+ 1,
+                Id = id + 1,
                 EventDate = DateTime.UtcNow,
                 UserInfo = userInfo,
                 IsUpdate = true,
@@ -229,10 +317,12 @@ namespace NetworkMonitor.Payment.Services
                     _logger.Error(" Subcription Items contains no Subscription for CustomerID " + session.CustomerId);
                 }
                 userInfo.CustomerId = session.CustomerId;
+                string externalUrl = GetExternalUrl("", userInfo.CustomerId);
+                paymentTransaction.ExternalUrl = externalUrl;
                 if (userInfo.CustomerId != null)
                 {
                     paymentTransaction.UserInfo = userInfo;
-                    await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepo, paymentTransaction);
+                    await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitListeners, paymentTransaction);
                     result.Message += " Success : Published event UpdateUserSubscription";
                     result.Success = true;
                 }
@@ -262,29 +352,38 @@ namespace NetworkMonitor.Payment.Services
         {
             var result = new ResultObj();
             var userInfo = new UserInfo();
-             int id = 0;
+            int id = 0;
             if (_paymentTransactions.Count > 0)
             {
                 id = _paymentTransactions.Max(m => m.Id);
             }
             var paymentTransaction = new PaymentTransaction()
             {
-                Id = id+ 1,
+                Id = id + 1,
                 EventDate = DateTime.UtcNow,
                 UserInfo = userInfo,
                 IsUpdate = false,
                 IsComplete = false,
-                Result = result
+                Result = result,
             };
             result.Message = "SERVICE : CreateUserSubscription : ";
             try
             {
                 userInfo.UserID = _sessionList[session.Id];
                 userInfo.CustomerId = session.CustomerId;
+                string externalUrl = GetExternalUrl(userInfo.UserID, userInfo.CustomerId);
+                var registerdUser = new RegisterdUser()
+                {
+                    CustomerId = userInfo.CustomerId,
+                    UserId = userInfo.UserID,
+                    ExternalUrl = externalUrl
+                };
+                RegisterUser(registerdUser);
+                paymentTransaction.ExternalUrl = externalUrl;
                 if (userInfo.UserID != null)
                 {
                     paymentTransaction.UserInfo = userInfo;
-                    await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepo, paymentTransaction);
+                    await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitListeners, paymentTransaction);
                     result.Message += "Success : Published event CreateUserSubscription";
                     result.Success = true;
                 }
@@ -316,7 +415,7 @@ namespace NetworkMonitor.Payment.Services
             result.Message = " Service : WakeUp ";
             try
             {
-                await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepo, true);
+                await PublishRepo.PaymentReadyAsync(_logger, _rabbitListeners, true);
                 result.Message += " Received Wakeup so Published paymentServiceReady event ";
                 result.Success = true;
                 _logger.Info(result.Message);

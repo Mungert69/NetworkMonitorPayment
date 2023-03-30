@@ -14,23 +14,19 @@ using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Payment.Models;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Objects;
+using NetworkMonitor.Utils.Helpers;
 using HostInitActions;
-
-
 namespace NetworkMonitor.Payment
 {
     public class Startup
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
-
         public Startup(IConfiguration configuration)
         {
-              _cancellationTokenSource = new CancellationTokenSource();
+            _cancellationTokenSource = new CancellationTokenSource();
             _config = configuration;
         }
-
         public IConfiguration _config { get; }
-
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
@@ -40,36 +36,31 @@ namespace NetworkMonitor.Payment
                 Url = "https://github.com/stripe-samples/checkout-single-subscription",
                 Version = "0.0.1",
             };
-
             services.Configure<PaymentOptions>(options =>
             {
                 options.StripePublishableKey = _config.GetValue<string>("StripePublishableKey");
                 options.StripeSecretKey = _config.GetValue<string>("StripeSecretKey");
                 options.StripeWebhookSecret = _config.GetValue<string>("StripeWebhookSecret");
                 options.StripeDomain = _config.GetValue<string>("Domain");
-                options.SystemUrl = _config.GetSection("SystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("SystemUrl");
-           
-           
-                options.StripeProducts=new List<ProductObj>();
-                 _config.GetSection("Products").Bind(options.StripeProducts);
-           
+                options.LocalSystemUrl = _config.GetSection("LocalSystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("LocalSystemUrl");
+                options.SystemUrls = _config.GetSection("SystemUrls").Get<List<SystemUrl>>() ?? throw new ArgumentNullException("SystemParams.SystemUls");
+                options.LoadServer = _config.GetValue<string>("LoadServer");
+                options.StripeProducts = new List<ProductObj>();
+                _config.GetSection("Products").Bind(options.StripeProducts);
             });
-             services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAnyOrigin",
-                    builder => builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
-            });
-
-            services.AddSingleton<IStripeService,StripeService>();
-            services.AddSingleton<INetLoggerFactory,NetLoggerFactory>();
+            services.AddCors(options =>
+           {
+               options.AddPolicy("AllowAnyOrigin",
+                   builder => builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+           });
+            services.AddSingleton<IStripeService, StripeService>();
+            services.AddSingleton<INetLoggerFactory, NetLoggerFactory>();
             services.AddSingleton(_cancellationTokenSource);
-
             services.AddAsyncServiceInitialization()
         .AddInitAction<IStripeService>(async (stripeService) =>
         {
             await stripeService.Init();
         });
-
             services.AddControllersWithViews().AddNewtonsoftJson(options =>
             {
                 options.SerializerSettings.ContractResolver = new DefaultContractResolver
@@ -78,11 +69,11 @@ namespace NetworkMonitor.Payment
                 };
             });
         }
-
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env,IHostApplicationLifetime appLifetime)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime appLifetime)
         {
-              appLifetime.ApplicationStopping.Register(() => {
+            appLifetime.ApplicationStopping.Register(() =>
+            {
                 _cancellationTokenSource.Cancel();
             });
             if (env.IsDevelopment())

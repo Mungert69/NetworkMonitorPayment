@@ -9,7 +9,9 @@ public class PaymentOptions
     public string StripeDomain { get; set; }
     public string PayPalClientID { get; set; }
     public string PayPalSecret { get; set; }
-    public SystemUrl SystemUrl { get; set; }
+    public SystemUrl LocalSystemUrl { get; set; }
+    public List<SystemUrl> SystemUrls { get; set; }
+    public string LoadServer{get;set;}
     public List<ProductObj> StripeProducts { get => _stripeProducts; set => _stripeProducts = value; }
 
     private List<ProductObj> _stripeProducts;
