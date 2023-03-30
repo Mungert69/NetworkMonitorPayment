@@ -27,41 +27,39 @@ namespace NetworkMonitor.Payment.Controllers
             this.options = options;
             this.client = new StripeClient(this.options.Value.StripeSecretKey);
         }
-        [HttpGet("registeruser/{userId}/{customerId}/externalUerl")]
-        public async Task<ResultObj> RegisterUser([FromRoute] string userId, [FromRoute] string customerId, [FromRoute] string externalUerl)
-        {
-            var result =new ResultObj();
-           
-            try
-            {
-                var registerUser = new RegisterdUser(){
-                    UserId=userId,
-                    CustomerId=customerId,
-                    ExternalUrl=externalUerl};
-                result = await _stripeService.RegisterUser(registerUser);
-            }
-            catch (Exception ex)
-            {
-                string message=" Failed to Register User. Eror was : " + ex.Message;
-                _logger.Error(message );
-                result.Success = false;
-                result.Message = message;
-            }
-            return result;
-        }
        
         [HttpGet("CreateCheckoutSession/{userId}/{productName}")]
         public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId, [FromRoute] string productName)
         {
-             ProductObj? productObj=this.options.Value.StripeProducts.Where(w => w.ProductName==productName).FirstOrDefault();
-             if (productObj==null || productObj.PriceId==null){
-                string message=" Unable to find product info for product name "+productName+ " . ";
-                _logger.Error(message);
+            var result = new ResultObj();
+            result.Message = " API : CreateCheckoutSesion ";
+
+            // Look for a Registerd User Object in _stripeService.RegisteredUsers with the userId/
+            // If not found, return BadRequest with error message
+            if (_stripeService.RegisteredUsers.Where(w => w.UserId == userId).FirstOrDefault() == null){
+                result.Message+=" Unable to find user with userId "+userId+" .";
+                result.Success=false;
+                _logger.Error(result.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
                     {
-                        Message = message,
+                        Message = result.Message,
+                    }
+                });
+            }
+             
+
+            
+             ProductObj? productObj=this.options.Value.StripeProducts.Where(w => w.ProductName==productName).FirstOrDefault();
+             if (productObj==null || productObj.PriceId==null){
+                result.Message+=" Unable to find product info for product name "+productName+ " . ";
+                _logger.Error(result.Message);
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = result.Message,
                     }
                 });
              }
@@ -112,14 +110,29 @@ namespace NetworkMonitor.Payment.Controllers
         [HttpGet("customer-portal/{customerId}")]
         public async Task<IActionResult> CustomerPortal([FromRoute] string customerId)
         {
-             if (customerId==null || customerId=="" || customerId.Length>100){
-                string message="Customer Portal Request : Malformed CustomerID .";
-                _logger.Error(message);
+               var result = new ResultObj();
+            result.Message = " API : CustomerPortal ";
+
+            if (_stripeService.RegisteredUsers.Where(w => w.CustomerId == customerId).FirstOrDefault() == null){
+                result.Message+=" Unable to find user with customerId "+customerId+" .";
+                result.Success=false;
+                _logger.Error(result.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
                     {
-                        Message = message,
+                        Message = result.Message,
+                    }
+                });
+            }
+             if (customerId==null || customerId=="" || customerId.Length>100){
+                result.Message+=" Customer Portal Request : Malformed CustomerID.";
+                _logger.Error(result.Message);
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = result.Message,
                     }
                 });
              }

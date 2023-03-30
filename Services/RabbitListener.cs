@@ -36,6 +36,11 @@ namespace NetworkMonitor.Objects.Repository
                 FuncName = "paymentCheck",
                 MessageTimeout=59000
             });
+            _rabbitMQObjs.Add(new RabbitMQObj()
+            {
+                ExchangeName = "registerUser",
+                FuncName = "registerUser"
+            });
          }
         protected override ResultObj DeclareConsumers()
         {
@@ -68,6 +73,14 @@ namespace NetworkMonitor.Objects.Repository
                         rabbitMQObj.Consumer.Received += async (model, ea) =>
                     {
                         result = await PaymentCheck();
+                        rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                    };
+                        break;
+                    case "registerUser":
+                        rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
+                        rabbitMQObj.Consumer.Received +=  (model, ea) =>
+                    {
+                        result = RegisterUser(ConvertToObject<RegisterdUser>(model, ea));
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                     };
                         break;
@@ -142,5 +155,24 @@ namespace NetworkMonitor.Objects.Repository
             }
             return result;
         }
+           public ResultObj RegisterUser(RegisterdUser registerdUser)
+        {
+            var result =new ResultObj();
+           
+            try
+            {
+                result = _stripeService.RegisterUser(registerdUser);
+               
+            }
+            catch (Exception ex)
+            {
+                string message=" Failed to Register User. Eror was : " + ex.Message;
+                _logger.Error(message );
+                result.Success = false;
+                result.Message = message;
+            }
+            return result;
+        }
+      
      }
 }

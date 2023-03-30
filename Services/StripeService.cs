@@ -21,10 +21,12 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> WakeUp();
         Task<ResultObj> PaymentCheck();
         ResultObj PaymentComplete(PaymentTransaction paymentTransaction);
-        Task<ResultObj> RegisterUser(RegisterdUser registerdUser);
+        ResultObj RegisterUser(RegisterdUser registerdUser);
         Task<ResultObj> UpdateUserSubscription(Subscription session);
         Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session);
         Task Init();
+
+        List<RegisterdUser> RegisteredUsers { get; }
     }
     public class StripeService : IStripeService
     {
@@ -34,18 +36,14 @@ namespace NetworkMonitor.Payment.Services
         private List<RabbitListener> _rabbitListeners = new List<RabbitListener>();
         private ILogger _logger;
 
-        private List<RegisterdUser> _registerdUsers = new List<RegisterdUser>(){
-            new RegisterdUser(){
-                UserId="auth0|638d7e8300ecba59089e7ebb",
-                CustomerId="",
-                ExternalUrl="https://monitorsrv.mahadeva.co.uk:2053"
-            },
-            new RegisterdUser(){
-                UserId="google-oauth2|118403118408200494081",
-                CustomerId="",
-                ExternalUrl="https://dev.com:2053"
+        private List<RegisterdUser> _registerdUsers = new List<RegisterdUser>();
+        public List<RegisterdUser> RegisteredUsers
+        {
+            get
+            {
+                return _registerdUsers;
             }
-        };
+        }
         public readonly IOptions<PaymentOptions> options;
         public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource)
         {
@@ -107,6 +105,8 @@ namespace NetworkMonitor.Payment.Services
                });
         }
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
+        public List<RegisterdUser> RegisterdUsers { get => _registerdUsers; set => _registerdUsers = value; }
+
         public void Shutdown()
         {
             _logger.Warn(" : SHUTDOWN started :");
@@ -123,20 +123,20 @@ namespace NetworkMonitor.Payment.Services
         }
 
         // A method that takes the paramter registerUser and adds it to the list of registerd users. Checing if it already exists first use UserId and CustomerId to match.
-        public async Task<ResultObj> RegisterUser(RegisterdUser registerUser)
+        public ResultObj RegisterUser(RegisterdUser registerUser)
         {
             var result = new ResultObj();
             result.Message = " SERVICE : Register User : ";
 
-            if (_registerdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).Count() == 0)
+            if (RegisterdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).Count() == 0)
             {
-                _registerdUsers.Add(registerUser);
+                RegisterdUsers.Add(registerUser);
                 result.Message += " Added User : " + registerUser.UserId + " : " + registerUser.CustomerId;
             }
             else
             {
                 // Update the existing user.
-                var user = _registerdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).FirstOrDefault();
+                var user = RegisterdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).FirstOrDefault();
                 user.CustomerId = registerUser.CustomerId;
                 user.UserId = registerUser.UserId;
                 user.ExternalUrl = registerUser.ExternalUrl;
@@ -150,9 +150,9 @@ namespace NetworkMonitor.Payment.Services
         public string GetExternalUrl(string userId, string customerId)
         {
             var result = "";
-            if (_registerdUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).Count() > 0)
+            if (RegisterdUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).Count() > 0)
             {
-                result = _registerdUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).FirstOrDefault().ExternalUrl;
+                result = RegisterdUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).FirstOrDefault().ExternalUrl;
             }
             return result;
         }
