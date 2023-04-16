@@ -347,3 +347,4 @@ http-freenetworkmonitor.pfx
 *.sentinel
 *project.razor.json
 UserInfos
+PaymentTransactions
