@@ -1,11 +1,8 @@
-
 using RabbitMQ.Client.Events;
 using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Payment.Services;
 using System.Threading.Tasks;
-
 using System;
-
 using MetroLog;
 namespace NetworkMonitor.Objects.Repository
 {
@@ -56,32 +53,56 @@ namespace NetworkMonitor.Objects.Repository
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
                         rabbitMQObj.Consumer.Received += async(model, ea) =>
                     {
-                        result = await WakeUp();
+                        try {
+                            result = await WakeUp();
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        }
+                         catch (Exception ex)
+                        {
+                            _logger.Error(" Error : RabbitListener.DeclareConsumers.paymentWakeUp " + ex.Message);
+                        }
                     };
                         break;
                     case "paymentComplete":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
                         rabbitMQObj.Consumer.Received += (model, ea) =>
                     {
-                        result = PaymentComplete(ConvertToObject<PaymentTransaction>(model, ea));
+                        try {
+                             result = PaymentComplete(ConvertToObject<PaymentTransaction>(model, ea));
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(" Error : RabbitListener.DeclareConsumers.paymentComplete " + ex.Message);
+                        }
                     };
                         break;
                     case "paymentCheck":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
                         rabbitMQObj.Consumer.Received += async (model, ea) =>
                     {
-                        result = await PaymentCheck();
+                        try {
+                            result = await PaymentCheck();
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(" Error : RabbitListener.DeclareConsumers.paymentCheck " + ex.Message);
+                        }
                     };
                         break;
                     case "registerUser":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
                         rabbitMQObj.Consumer.Received +=  (model, ea) =>
                     {
-                        result = RegisterUser(ConvertToObject<RegisterdUser>(model, ea));
+                        try {
+                              result = RegisterUser(ConvertToObject<RegisterdUser>(model, ea));
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(" Error : RabbitListener.DeclareConsumers.registerUser " + ex.Message);
+                        }
                     };
                         break;
                 }
@@ -158,7 +179,6 @@ namespace NetworkMonitor.Objects.Repository
            public ResultObj RegisterUser(RegisterdUser registerdUser)
         {
             var result =new ResultObj();
-           
             try
             {
                 result = _stripeService.RegisterUser(registerdUser);
@@ -173,6 +193,5 @@ namespace NetworkMonitor.Objects.Repository
             }
             return result;
         }
-      
      }
 }
