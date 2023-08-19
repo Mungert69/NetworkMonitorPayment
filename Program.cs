@@ -25,7 +25,7 @@ namespace NetworkMonitor.Payment
                 options.Listen(IPAddress.Any, 2082);
                 options.Listen(IPAddress.Any, 2083, listenOptions =>
                 {
-                    listenOptions.UseHttps("https.pfx", "Ac£0462110");
+                    listenOptions.UseHttps("https-freenetworkmonitor.pfx", "Ac£0462110");
                 });
             }).UseStartup<Startup>();
     }
