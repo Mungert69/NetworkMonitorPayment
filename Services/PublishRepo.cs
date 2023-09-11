@@ -2,13 +2,26 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NetworkMonitor.Objects.ServiceMessage;
-using System.Diagnostics;
+using Newtonsoft.Json;
 using MetroLog;
 using System.Threading.Tasks;
 namespace NetworkMonitor.Objects.Repository
 {
     public class PublishRepo
     {
+        public static async Task UpdateProductsAsync(ILogger logger, List<RabbitListener> rabbitListeners, List<ProductObj> products)
+        {
+
+            var updateProductObj=new UpdateProductObj(){Products = products};
+             logger.Info(" Publishing products : " + JsonConvert.SerializeObject(updateProductObj));
+            
+            // publish to all systems.
+            foreach (RabbitListener rabbitListener in rabbitListeners)
+            {
+                await rabbitListener.PublishAsync<UpdateProductObj>("updateProducts", updateProductObj);
+                logger.Info(" Published event updateProducts to: " + rabbitListener.SystemUrl);
+            }
+        }
         public static async Task PaymentReadyAsync(ILogger logger, List<RabbitListener> rabbitListeners, bool isReady)
         {
             var paymentInitObj = new PaymentServiceInitObj();

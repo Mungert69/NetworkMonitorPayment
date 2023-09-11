@@ -81,6 +81,7 @@ namespace NetworkMonitor.Payment.Services
                        {
                            _logger.Info(" : StripeService : Init : Adding RabbitListener for : " + f.ExternalUrl + " : ");
                            _rabbitListeners.Add(new RabbitListener(_logger, f, this));
+                          
                        });
 
                    }
@@ -88,6 +89,14 @@ namespace NetworkMonitor.Payment.Services
                    {
                        result.Message += " Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
                        result.Success = false;
+                   }
+                   try {
+                     PublishRepo.UpdateProductsAsync(_logger,_rabbitListeners,this.options.Value.StripeProducts);
+                   }
+                   catch (Exception e){
+                     result.Message += " Could Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
+                       result.Success = false;
+
                    }
                    if (_paymentTransactions == null)
                    {
