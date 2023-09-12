@@ -8,7 +8,6 @@ using NetworkMonitor.Objects;
 using NetworkMonitor.Objects.Repository;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Objects.ServiceMessage;
-using NetworkMonitor.Payment.Models;
 using Microsoft.Extensions.Options;
 using MetroLog;
 using Stripe;

@@ -9,7 +9,7 @@ using Stripe;
 using Stripe.Checkout;
 using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Objects.Factory;
-using NetworkMonitor.Payment.Models;
+using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Objects;
 using MetroLog;
 namespace NetworkMonitor.Payment.Controllers
