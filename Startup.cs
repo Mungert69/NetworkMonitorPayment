@@ -14,6 +14,7 @@ using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Objects;
+using NetworkMonitor.Objects.Repository;
 using NetworkMonitor.Utils.Helpers;
 using HostInitActions;
 namespace NetworkMonitor.Payment
@@ -54,6 +55,7 @@ namespace NetworkMonitor.Payment
                    builder => builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
            });
             services.AddSingleton<IStripeService, StripeService>();
+            services.AddSingleton<IFileRepo, FileRepo>();
             services.AddSingleton<INetLoggerFactory, NetLoggerFactory>();
             services.AddSingleton(_cancellationTokenSource);
             services.AddAsyncServiceInitialization()

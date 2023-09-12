@@ -20,12 +20,12 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> WakeUp();
         Task<ResultObj> PaymentCheck();
         ResultObj PaymentComplete(PaymentTransaction paymentTransaction);
-        ResultObj RegisterUser(RegisterdUser registerdUser);
+        ResultObj RegisterUser(RegisteredUser RegisteredUser);
         Task<ResultObj> UpdateUserSubscription(Subscription session);
         Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session);
         Task Init();
 
-        List<RegisterdUser> RegisteredUsers { get; }
+        ConcurrentBag<RegisteredUser> RegisteredUsers { get; }
     }
     public class StripeService : IStripeService
     {
@@ -34,19 +34,17 @@ namespace NetworkMonitor.Payment.Services
         private ConcurrentBag<PaymentTransaction> _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
         private List<RabbitListener> _rabbitListeners = new List<RabbitListener>();
         private ILogger _logger;
+        private IFileRepo _fileRepo;
 
-        private List<RegisterdUser> _registerdUsers = new List<RegisterdUser>();
-        public List<RegisterdUser> RegisteredUsers
-        {
-            get
-            {
-                return _registerdUsers;
-            }
-        }
+        private ConcurrentBag<RegisteredUser> _registeredUsers = new ConcurrentBag<RegisteredUser>();
+        public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
+        public ConcurrentBag<RegisteredUser> RegisteredUsers { get => _registeredUsers; }
+
         public readonly IOptions<PaymentOptions> options;
-        public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource)
+        public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
         {
             _token = cancellationTokenSource.Token;
+            _fileRepo=fileRepo;
             this.options = options;
             _logger = loggerFactory.GetLogger("StripeService");
         }
@@ -59,8 +57,9 @@ namespace NetworkMonitor.Payment.Services
                    try
                    {
                        _token.Register(() => this.Shutdown());
-                       FileRepo.CheckFileExists("PaymentTransactions", _logger);
-                       _paymentTransactions = FileRepo.GetStateJson<ConcurrentBag<PaymentTransaction>>("PaymentTransactions");
+                       _fileRepo.CheckFileExists("PaymentTransactions", _logger);
+                       _paymentTransactions = _fileRepo.GetStateJsonAsync<ConcurrentBag<PaymentTransaction>>("PaymentTransactions").Result;
+                       _registeredUsers= _fileRepo.GetStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers").Result;
                        int count = 0;
                        if (_paymentTransactions != null)
                        {
@@ -80,7 +79,7 @@ namespace NetworkMonitor.Payment.Services
                        {
                            _logger.Info(" : StripeService : Init : Adding RabbitListener for : " + f.ExternalUrl + " : ");
                            _rabbitListeners.Add(new RabbitListener(_logger, f, this));
-                          
+
                        });
 
                    }
@@ -89,11 +88,13 @@ namespace NetworkMonitor.Payment.Services
                        result.Message += " Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
                        result.Success = false;
                    }
-                   try {
-                     PublishRepo.UpdateProductsAsync(_logger,_rabbitListeners,this.options.Value.StripeProducts);
+                   try
+                   {
+                       PublishRepo.UpdateProductsAsync(_logger, _rabbitListeners, this.options.Value.StripeProducts);
                    }
-                   catch (Exception e){
-                     result.Message += " Could Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
+                   catch (Exception e)
+                   {
+                       result.Message += " Could Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
                        result.Success = false;
 
                    }
@@ -112,13 +113,11 @@ namespace NetworkMonitor.Payment.Services
                    else _logger.Fatal(result.Message);
                });
         }
-        public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
-        public List<RegisterdUser> RegisterdUsers { get => _registerdUsers; set => _registerdUsers = value; }
 
         public void Shutdown()
         {
             _logger.Warn(" : SHUTDOWN started :");
-            var result = SaveTransactions();
+            var result = SaveTransactions().Result;
             if (result.Success)
             {
                 _logger.Info(result.Message);
@@ -131,36 +130,38 @@ namespace NetworkMonitor.Payment.Services
         }
 
         // A method that takes the paramter registerUser and adds it to the list of registerd users. Checing if it already exists first use UserId and CustomerId to match.
-        public ResultObj RegisterUser(RegisterdUser registerUser)
+        public ResultObj RegisterUser(RegisteredUser registeredUser)
         {
             var result = new ResultObj();
             result.Message = " SERVICE : Register User : ";
 
-            if (RegisterdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).Count() == 0)
+            if (_registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.CustomerId == registeredUser.CustomerId).Count() == 0)
             {
-                RegisterdUsers.Add(registerUser);
-                result.Message += " Added User : " + registerUser.UserId + " : " + registerUser.CustomerId+" : "+registerUser.ExternalUrl+" : ";
+                _registeredUsers.Add(registeredUser);
+                result.Message += " Added User : " + registeredUser.UserId + " : " + registeredUser.CustomerId + " : " + registeredUser.ExternalUrl + " : ";
             }
             else
             {
                 // Update the existing user.
-                var user = RegisterdUsers.Where(w => w.UserId == registerUser.UserId || w.CustomerId == registerUser.CustomerId).FirstOrDefault();
-                user.CustomerId = registerUser.CustomerId;
-                user.UserId = registerUser.UserId;
-                user.ExternalUrl = registerUser.ExternalUrl;
+                var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.CustomerId == registeredUser.CustomerId).FirstOrDefault();
+                user.CustomerId = registeredUser.CustomerId;
+                user.UserId = registeredUser.UserId;
+                user.ExternalUrl = registeredUser.ExternalUrl;
             }
-            result.Success = true;
+           SaveRegisteredUsers(result);
+           
+
 
             return result;
         }
 
-        // A Method to return the ExternalUrl from RegisterdUser list using the UserId or CustomerId.
+        // A Method to return the ExternalUrl from RegisteredUser list using the UserId or CustomerId.
         public string GetExternalUrl(string userId, string customerId)
         {
             var result = "";
-            if (RegisterdUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).Count() > 0)
+            if (_registeredUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).Count() > 0)
             {
-                result = RegisterdUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).FirstOrDefault().ExternalUrl;
+                result = _registeredUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).FirstOrDefault().ExternalUrl;
             }
             return result;
         }
@@ -205,12 +206,32 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-        private ResultObj SaveTransactions()
+
+ 
+
+private async Task<ResultObj> SaveRegisteredUsers(ResultObj result)
+        {
+
+            try
+            {
+                await _fileRepo.SaveStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers", _registeredUsers);
+                 result.Message += " Save RegisteredUsers Completed ";
+                result.Success = true;
+            }
+            catch (Exception e)
+            {
+                result.Message += " Failed to Save RegisteredUsers . Error was : " + e.ToString();
+                result.Success = false;
+                _logger.Error(result.Message);
+            }
+            return result;
+        }
+        private  async Task<ResultObj> SaveTransactions()
         {
             var result = new ResultObj();
             try
             {
-                FileRepo.SaveStateJson<ConcurrentBag<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
+                await _fileRepo.SaveStateJsonAsync<ConcurrentBag<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
                 result.Message = " Save Transactions Completed ";
                 result.Success = true;
             }
@@ -380,13 +401,13 @@ namespace NetworkMonitor.Payment.Services
                 userInfo.UserID = _sessionList[session.Id];
                 userInfo.CustomerId = session.CustomerId;
                 string externalUrl = GetExternalUrl(userInfo.UserID, userInfo.CustomerId);
-                var registerdUser = new RegisterdUser()
+                var RegisteredUser = new RegisteredUser()
                 {
                     CustomerId = userInfo.CustomerId,
                     UserId = userInfo.UserID,
                     ExternalUrl = externalUrl
                 };
-                RegisterUser(registerdUser);
+                RegisterUser(RegisteredUser);
                 paymentTransaction.ExternalUrl = externalUrl;
                 if (userInfo.UserID != null)
                 {

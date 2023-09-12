@@ -96,7 +96,7 @@ namespace NetworkMonitor.Objects.Repository
                         rabbitMQObj.Consumer.Received +=  (model, ea) =>
                     {
                         try {
-                              result = RegisterUser(ConvertToObject<RegisterdUser>(model, ea));
+                              result = RegisterUser(ConvertToObject<RegisteredUser>(model, ea));
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                         }
                         catch (Exception ex)
@@ -176,12 +176,12 @@ namespace NetworkMonitor.Objects.Repository
             }
             return result;
         }
-           public ResultObj RegisterUser(RegisterdUser registerdUser)
+           public ResultObj RegisterUser(RegisteredUser RegisteredUser)
         {
             var result =new ResultObj();
             try
             {
-                result = _stripeService.RegisterUser(registerdUser);
+                result = _stripeService.RegisterUser(RegisteredUser);
                _logger.Info(result.Message);
             }
             catch (Exception ex)
