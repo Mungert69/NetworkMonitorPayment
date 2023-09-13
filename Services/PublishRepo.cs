@@ -9,10 +9,9 @@ namespace NetworkMonitor.Objects.Repository
 {
     public class PublishRepo
     {
-        public static async Task UpdateProductsAsync(ILogger logger, List<RabbitListener> rabbitListeners, List<ProductObj> products)
+        public static async Task UpdateProductsAsync(ILogger logger, List<RabbitListener> rabbitListeners, UpdateProductObj updateProductObj)
         {
 
-            var updateProductObj=new UpdateProductObj(){Products = products};
              logger.Info(" Publishing products : " + JsonConvert.SerializeObject(updateProductObj));
             
             // publish to all systems.

@@ -175,20 +175,27 @@ namespace NetworkMonitor.Payment.Controllers
                 Console.WriteLine($"Something failed {e}");
                 return BadRequest();
             }
-            if (stripeEvent.Type == "checkout.session.completed")
+            if (stripeEvent.Type == Events.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                _stripeService.CreateUserSubscription(session);
+                await _stripeService.CreateUserSubscription(session);
                 _logger.Info("SUCCESS : Got userId " + _stripeService.SessionList[session.Id]);
                 Console.WriteLine($"Session ID: {session.Id}");
                 // Take some action based on session.
             }
+            if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
+            {
+                var session = stripeEvent.Data.Object as Subscription;
+                await _stripeService.UpdateUserSubscription(session);
+                Console.WriteLine($"Updating customer subcription for customerId: {session.Customer}");
+               
+            }
             if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
-                _stripeService.UpdateUserSubscription(session);
+                await _stripeService.UpdateUserSubscription(session);
                 Console.WriteLine($"Updating customer subcription for customerId: {session.Customer}");
-                // Take some action based on session.
+
             }
             return Ok();
         }

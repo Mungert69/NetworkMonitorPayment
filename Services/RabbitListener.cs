@@ -65,10 +65,10 @@ namespace NetworkMonitor.Objects.Repository
                         break;
                     case "paymentComplete":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received += (model, ea) =>
+                        rabbitMQObj.Consumer.Received += async (model, ea) =>
                     {
                         try {
-                             result = PaymentComplete(ConvertToObject<PaymentTransaction>(model, ea));
+                             result = await PaymentComplete(ConvertToObject<PaymentTransaction>(model, ea));
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                         }
                         catch (Exception ex)
@@ -93,10 +93,10 @@ namespace NetworkMonitor.Objects.Repository
                         break;
                     case "registerUser":
                         rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received +=  (model, ea) =>
+                        rabbitMQObj.Consumer.Received +=  async (model, ea) =>
                     {
                         try {
-                              result = RegisterUser(ConvertToObject<RegisteredUser>(model, ea));
+                              result = await RegisterUser(ConvertToObject<RegisteredUser>(model, ea));
                         rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
                         }
                         catch (Exception ex)
@@ -157,14 +157,14 @@ namespace NetworkMonitor.Objects.Repository
             }
             return result;
         }
-        public ResultObj PaymentComplete(PaymentTransaction paymentTransaction)
+        public async Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction)
         {
             ResultObj result = new ResultObj();
             result.Success = false;
             result.Message = "MessageAPI : Payment Complete : ";
             try
             {
-                result = _stripeService.PaymentComplete(paymentTransaction);
+                result = await _stripeService.PaymentComplete(paymentTransaction);
                 _logger.Info(result.Message);
             }
             catch (Exception e)
@@ -176,12 +176,12 @@ namespace NetworkMonitor.Objects.Repository
             }
             return result;
         }
-           public ResultObj RegisterUser(RegisteredUser RegisteredUser)
+           public async Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser)
         {
             var result =new ResultObj();
             try
             {
-                result = _stripeService.RegisterUser(RegisteredUser);
+                result = await _stripeService.RegisterUser(RegisteredUser);
                _logger.Info(result.Message);
             }
             catch (Exception ex)

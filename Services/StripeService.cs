@@ -19,12 +19,11 @@ namespace NetworkMonitor.Payment.Services
         Dictionary<string, string> SessionList { get; set; }
         Task<ResultObj> WakeUp();
         Task<ResultObj> PaymentCheck();
-        ResultObj PaymentComplete(PaymentTransaction paymentTransaction);
-        ResultObj RegisterUser(RegisteredUser RegisteredUser);
+        Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction);
+        Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser);
         Task<ResultObj> UpdateUserSubscription(Subscription session);
         Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session);
         Task Init();
-
         ConcurrentBag<RegisteredUser> RegisteredUsers { get; }
     }
     public class StripeService : IStripeService
@@ -35,85 +34,102 @@ namespace NetworkMonitor.Payment.Services
         private List<RabbitListener> _rabbitListeners = new List<RabbitListener>();
         private ILogger _logger;
         private IFileRepo _fileRepo;
-
         private ConcurrentBag<RegisteredUser> _registeredUsers = new ConcurrentBag<RegisteredUser>();
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
         public ConcurrentBag<RegisteredUser> RegisteredUsers { get => _registeredUsers; }
-
         public readonly IOptions<PaymentOptions> options;
         public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
         {
             _token = cancellationTokenSource.Token;
-            _fileRepo=fileRepo;
+            _fileRepo = fileRepo;
             this.options = options;
             _logger = loggerFactory.GetLogger("StripeService");
         }
-        public Task Init()
+        public async Task Init()
         {
-            return Task.Run(() =>
-               {
-                   var result = new ResultObj();
-                   result.Message = " Init Stripe Service : ";
-                   try
-                   {
-                       _token.Register(() => this.Shutdown());
-                       _fileRepo.CheckFileExists("PaymentTransactions", _logger);
-                       _paymentTransactions = _fileRepo.GetStateJsonAsync<ConcurrentBag<PaymentTransaction>>("PaymentTransactions").Result;
-                       _registeredUsers= _fileRepo.GetStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers").Result;
-                       int count = 0;
-                       if (_paymentTransactions != null)
-                       {
-                           count = _paymentTransactions.Count;
-                       }
-                       result.Message += " Loaded " + count + " PaymentTranctions from State. ";
-                       result.Success = true;
-                   }
-                   catch (Exception e)
-                   {
-                       result.Success = false;
-                       result.Message += " Failed to load PaymentTransactions from State. Error was : " + e.ToString() + " . ";
-                   }
-                   try
-                   {
-                       this.options.Value.SystemUrls.ForEach(f =>
-                       {
-                           _logger.Info(" : StripeService : Init : Adding RabbitListener for : " + f.ExternalUrl + " : ");
-                           _rabbitListeners.Add(new RabbitListener(_logger, f, this));
 
-                       });
+            var result = new ResultObj();
+            result.Message = " Init Stripe Service : ";
+            try
+            {
+                _token.Register(() => this.Shutdown());
+                _fileRepo.CheckFileExists("PaymentTransactions", _logger);
+                _fileRepo.CheckFileExists("RegisteredUsers", _logger);
+                _paymentTransactions = await _fileRepo.GetStateJsonAsync<ConcurrentBag<PaymentTransaction>>("PaymentTransactions");
+                _registeredUsers = await _fileRepo.GetStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers");
 
-                   }
-                   catch (Exception e)
-                   {
-                       result.Message += " Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
-                       result.Success = false;
-                   }
-                   try
-                   {
-                       PublishRepo.UpdateProductsAsync(_logger, _rabbitListeners, this.options.Value.StripeProducts);
-                   }
-                   catch (Exception e)
-                   {
-                       result.Message += " Could Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
-                       result.Success = false;
 
-                   }
-                   if (_paymentTransactions == null)
-                   {
-                       _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
-                   }
-                   /*if (_paymentTransactions.Count == 0)
-                   {
-                       _paymentTransactions.Add(new PaymentTransaction());
-                   }*/
-                   result.Message += " Finished StripeService Init ";
-                   result.Success = result.Success && true;
-                   if (result.Success)
-                       _logger.Info(result.Message);
-                   else _logger.Fatal(result.Message);
-               });
+                if (_paymentTransactions != null)
+                {
+                    result.Message += " Loaded " + _paymentTransactions.Count + " PaymentTranctions from State. ";
+                }
+                
+                if (_registeredUsers != null)
+                {
+                    result.Message += " Loaded " + _registeredUsers.Count + " RegisteredUsers from State. ";
+                }
+                
+                result.Success = true;
+            }
+            catch (Exception e)
+            {
+              
+                result.Success = false;
+                result.Message += " Error Loading State . Error was : " + e.ToString() + " . ";
+            }
+            finally{
+                  if (_paymentTransactions == null)
+                {
+                    _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
+                    result.Message += " Failed to load PaymentTransactions from State. Setting new ConcurrentBag<PaymentTransaction>() ";
+                }
+                if (_registeredUsers == null)
+                {
+                    _registeredUsers = new ConcurrentBag<RegisteredUser>();
+                    result.Message += " Failed to load  RegisteredUsers from State. Setting new ConcurrentBag<RegisteredUser>() ";
+                }
+            }
+            try
+            {
+                this.options.Value.SystemUrls.ForEach(f =>
+                {
+                    _logger.Info(" : StripeService : Init : Adding RabbitListener for : " + f.ExternalUrl + " : ");
+                    _rabbitListeners.Add(new RabbitListener(_logger, f, this));
+                });
+            }
+            catch (Exception e)
+            {
+                result.Message += " Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
+                result.Success = false;
+            }
+            try
+            {
+                var updateProductObj=new UpdateProductObj(){
+                    Products=this.options.Value.StripeProducts,
+                    PaymentServerUrl=this.options.Value.PaymentServerUrl
+                };
+                await PublishRepo.UpdateProductsAsync(_logger, _rabbitListeners, updateProductObj);
+            }
+            catch (Exception e)
+            {
+                result.Message += " Could Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
+                result.Success = false;
+            }
+            if (_paymentTransactions == null)
+            {
+                _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
+            }
+            /*if (_paymentTransactions.Count == 0)
+            {
+                _paymentTransactions.Add(new PaymentTransaction());
+            }*/
+            result.Message += " Finished StripeService Init ";
+            result.Success = result.Success && true;
+            if (result.Success)
+                _logger.Info(result.Message);
+            else _logger.Fatal(result.Message);
+
         }
-
         public void Shutdown()
         {
             _logger.Warn(" : SHUTDOWN started :");
@@ -128,13 +144,11 @@ namespace NetworkMonitor.Payment.Services
             }
             _logger.Warn(" : SHUTDOWN completed :");
         }
-
         // A method that takes the paramter registerUser and adds it to the list of registerd users. Checing if it already exists first use UserId and CustomerId to match.
-        public ResultObj RegisterUser(RegisteredUser registeredUser)
+        public async Task<ResultObj> RegisterUser(RegisteredUser registeredUser)
         {
             var result = new ResultObj();
             result.Message = " SERVICE : Register User : ";
-
             if (_registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.CustomerId == registeredUser.CustomerId).Count() == 0)
             {
                 _registeredUsers.Add(registeredUser);
@@ -147,14 +161,11 @@ namespace NetworkMonitor.Payment.Services
                 user.CustomerId = registeredUser.CustomerId;
                 user.UserId = registeredUser.UserId;
                 user.ExternalUrl = registeredUser.ExternalUrl;
+                user.UserEmail = registeredUser.UserEmail;
             }
-           SaveRegisteredUsers(result);
-           
-
-
+            await SaveRegisteredUsers(result);
             return result;
         }
-
         // A Method to return the ExternalUrl from RegisteredUser list using the UserId or CustomerId.
         public string GetExternalUrl(string userId, string customerId)
         {
@@ -165,7 +176,6 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-
         public async Task<ResultObj> PaymentCheck()
         {
             var result = new ResultObj();
@@ -190,7 +200,7 @@ namespace NetworkMonitor.Payment.Services
                         //TODO notify user of failure.
                         _logger.Error(" Payment Transaction Failed for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
                     }
-                    SaveTransactions();
+                    await SaveTransactions();
                     Task.Delay(500).Wait();
                 });
                 await PublishRepo.PaymentReadyAsync(_logger, _rabbitListeners, true);
@@ -206,16 +216,12 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-
- 
-
-private async Task<ResultObj> SaveRegisteredUsers(ResultObj result)
+        private async Task<ResultObj> SaveRegisteredUsers(ResultObj result)
         {
-
             try
             {
                 await _fileRepo.SaveStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers", _registeredUsers);
-                 result.Message += " Save RegisteredUsers Completed ";
+                result.Message += " Save RegisteredUsers Completed ";
                 result.Success = true;
             }
             catch (Exception e)
@@ -226,7 +232,7 @@ private async Task<ResultObj> SaveRegisteredUsers(ResultObj result)
             }
             return result;
         }
-        private  async Task<ResultObj> SaveTransactions()
+        private async Task<ResultObj> SaveTransactions()
         {
             var result = new ResultObj();
             try
@@ -243,7 +249,7 @@ private async Task<ResultObj> SaveRegisteredUsers(ResultObj result)
             }
             return result;
         }
-        public ResultObj PaymentComplete(PaymentTransaction paymentTransaction)
+        public async Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction)
         {
             var result = new ResultObj();
             try
@@ -286,7 +292,7 @@ private async Task<ResultObj> SaveRegisteredUsers(ResultObj result)
                             result.Success = false;
                         }
                     }
-                    SaveTransactions();
+                    await SaveTransactions();
                 }
                 else
                 {
@@ -373,7 +379,7 @@ private async Task<ResultObj> SaveRegisteredUsers(ResultObj result)
                 paymentTransaction.UserInfo = userInfo;
                 paymentTransaction.Result = result;
                 _paymentTransactions.Add(paymentTransaction);
-                result.Message += SaveTransactions();
+                result.Message += await SaveTransactions();
             }
             return result;
         }
@@ -398,13 +404,25 @@ private async Task<ResultObj> SaveRegisteredUsers(ResultObj result)
             result.Message = "SERVICE : CreateUserSubscription : ";
             try
             {
-                userInfo.UserID = _sessionList[session.Id];
+                if (_sessionList.ContainsKey(session.Id))
+                {
+                    // If the session.Id exists in the dictionary, retrieve its associated value.
+                    userInfo.UserID = _sessionList[session.Id];
+                }
+                else
+                {
+                    string newUserID = session.ClientReferenceId;
+                    _sessionList[session.Id] = newUserID;
+                    userInfo.UserID = newUserID;
+                }
                 userInfo.CustomerId = session.CustomerId;
+                userInfo.Email = session.CustomerEmail;
                 string externalUrl = GetExternalUrl(userInfo.UserID, userInfo.CustomerId);
                 var RegisteredUser = new RegisteredUser()
                 {
                     CustomerId = userInfo.CustomerId,
                     UserId = userInfo.UserID,
+                    UserEmail = userInfo.Email,
                     ExternalUrl = externalUrl
                 };
                 RegisterUser(RegisteredUser);
