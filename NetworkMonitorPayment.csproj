@@ -5,7 +5,7 @@
     <PublishProfile>DefaultContainer</PublishProfile>
     <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:7.0-jammy-amd64</ContainerBaseImage>
     <ContainerImageName>mungert/networkmonitorpayment</ContainerImageName>
-    <ContainerImageTag>0.4.0</ContainerImageTag>
+    <ContainerImageTag>0.4.2</ContainerImageTag>
 </PropertyGroup>
 
 
@@ -17,15 +17,8 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="HostInitActions" Version="1.2.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="DotNetEnv" Version="2.3.0" />
-    <PackageReference Include="Stripe.net" Version="41.8.0" />
-    <PackageReference Include="MetroLog.Net6" Version="2.1.0" />
-       <PackageReference Include="CloudNative.CloudEvents" Version="2.5.1" />
-    <PackageReference Include="CloudNative.CloudEvents.AspNetCore" Version="2.5.1" />
-    <PackageReference Include="CloudNative.CloudEvents.NewtonsoftJson" Version="2.5.1" />
-        <PackageReference Include="RabbitMQ.Client" Version="6.4.0" /> 
-         <PackageReference Include="Microsoft.NET.Build.Containers" Version="0.2.7" />
+    <PackageReference Include="DotNetEnv" Version="2.5.0" />
+    <PackageReference Include="Stripe.net" Version="42.4.0" />
 
   </ItemGroup>
   <ItemGroup>

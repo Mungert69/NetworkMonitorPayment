@@ -348,3 +348,6 @@ https-freenetworkmonitor.pfx
 *project.razor.json
 UserInfos
 PaymentTransactions
+RegisteredUser
+PaymentTransactions
+RegisteredUsers
