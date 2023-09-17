@@ -8,6 +8,14 @@ using NetworkMonitor.Utils.Helpers;
 using NetworkMonitor.Objects.Factory;
 namespace NetworkMonitor.Objects.Repository
 {
+    public interface IRabbitListener
+{
+    Task<ResultObj> WakeUp();
+    Task<ResultObj> PaymentCheck();
+    Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction);
+    Task<ResultObj> RegisterUser(RegisteredUser registeredUser);
+}
+
     
     public class RabbitListener : RabbitListenerBase
     {
