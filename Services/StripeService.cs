@@ -8,10 +8,12 @@ using NetworkMonitor.Objects;
 using NetworkMonitor.Objects.Repository;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Objects.ServiceMessage;
+using NetworkMonitor.Utils.Helpers;
 using Microsoft.Extensions.Options;
 using MetroLog;
 using Stripe;
 using Stripe.Checkout;
+
 namespace NetworkMonitor.Payment.Services
 {
     public interface IStripeService
@@ -31,15 +33,20 @@ namespace NetworkMonitor.Payment.Services
         CancellationToken _token;
         private Dictionary<string, string> _sessionList = new Dictionary<string, string>();
         private ConcurrentBag<PaymentTransaction> _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
-        private List<RabbitListener> _rabbitListeners = new List<RabbitListener>();
+        private List<IRabbitRepo> _rabbitRepos = new List<IRabbitRepo>();
         private ILogger _logger;
         private IFileRepo _fileRepo;
+        private INetLoggerFactory _loggerFactory;
+        private SystemParamsHelper _systemParamsHelper;
+
         private ConcurrentBag<RegisteredUser> _registeredUsers = new ConcurrentBag<RegisteredUser>();
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
         public ConcurrentBag<RegisteredUser> RegisteredUsers { get => _registeredUsers; }
         public readonly IOptions<PaymentOptions> options;
-        public StripeService(INetLoggerFactory loggerFactory, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
+        public StripeService(INetLoggerFactory loggerFactory,SystemParamsHelper systemParamsHelper, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
         {
+            _loggerFactory=loggerFactory;
+            _systemParamsHelper=systemParamsHelper;
             _token = cancellationTokenSource.Token;
             _fileRepo = fileRepo;
             this.options = options;
@@ -93,8 +100,9 @@ namespace NetworkMonitor.Payment.Services
             {
                 this.options.Value.SystemUrls.ForEach(f =>
                 {
-                    _logger.Info(" : StripeService : Init : Adding RabbitListener for : " + f.ExternalUrl + " : ");
-                    _rabbitListeners.Add(new RabbitListener(_logger, f, this));
+                    ISystemParamsHelper paymentParamsHelper=new PaymentParamsHelper(f);
+                    _logger.Info(" : StripeService : Init : Adding IRabbitRepo for : " + f.ExternalUrl + " : ");
+                    _rabbitRepos.Add(new RabbitRepo(_loggerFactory, paymentParamsHelper));
                 });
             }
             catch (Exception e)
@@ -108,7 +116,7 @@ namespace NetworkMonitor.Payment.Services
                     Products=this.options.Value.StripeProducts,
                     PaymentServerUrl=this.options.Value.PaymentServerUrl
                 };
-                await PublishRepo.UpdateProductsAsync(_logger, _rabbitListeners, updateProductObj);
+                await PublishRepo.UpdateProductsAsync(_logger, _rabbitRepos, updateProductObj);
             }
             catch (Exception e)
             {
@@ -187,11 +195,11 @@ namespace NetworkMonitor.Payment.Services
                     // Using p.IsUpdate to determine if this is an update or a new subscription. Publish to RabbitMQ.
                     if (p.IsUpdate)
                     {
-                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitListeners, p);
+                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, p);
                     }
                     else
                     {
-                        await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitListeners, p);
+                        await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepos, p);
                     }
                     result.Message += (" Retry " + p.RetryCount + " of Payment Transaction  for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
                     p.RetryCount++;
@@ -203,7 +211,7 @@ namespace NetworkMonitor.Payment.Services
                     await SaveTransactions();
                     Task.Delay(500).Wait();
                 });
-                await PublishRepo.PaymentReadyAsync(_logger, _rabbitListeners, true);
+                await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepos, true);
                 result.Message += " Payment Transaction Queue Checked ";
                 result.Success = true;
                 //_logger.Info(result.Message);
@@ -357,7 +365,7 @@ namespace NetworkMonitor.Payment.Services
                 if (userInfo.CustomerId != null)
                 {
                     paymentTransaction.UserInfo = userInfo;
-                    await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitListeners, paymentTransaction);
+                    await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
                     result.Message += " Success : Published event UpdateUserSubscription";
                     result.Success = true;
                 }
@@ -430,7 +438,7 @@ namespace NetworkMonitor.Payment.Services
                 if (userInfo.UserID != null)
                 {
                     paymentTransaction.UserInfo = userInfo;
-                    await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitListeners, paymentTransaction);
+                    await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
                     result.Message += "Success : Published event CreateUserSubscription";
                     result.Success = true;
                 }
@@ -462,7 +470,7 @@ namespace NetworkMonitor.Payment.Services
             result.Message = " Service : WakeUp ";
             try
             {
-                await PublishRepo.PaymentReadyAsync(_logger, _rabbitListeners, true);
+                await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepos, true);
                 result.Message += " Received Wakeup so Published paymentServiceReady event ";
                 result.Success = true;
                 _logger.Info(result.Message);

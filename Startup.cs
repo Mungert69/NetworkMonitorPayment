@@ -43,7 +43,7 @@ namespace NetworkMonitor.Payment
                 options.StripeSecretKey = _config.GetValue<string>("StripeSecretKey");
                 options.StripeWebhookSecret = _config.GetValue<string>("StripeWebhookSecret");
                 options.StripeDomain = _config.GetValue<string>("Domain");
-                options.PaymentServerUrl =  _config.GetValue<string>("PaymentServerUrl");
+                options.PaymentServerUrl = _config.GetValue<string>("PaymentServerUrl");
                 options.SystemUrls = _config.GetSection("SystemUrls").Get<List<SystemUrl>>() ?? throw new ArgumentNullException("SystemParams.SystemUls");
                 options.LoadServer = _config.GetValue<string>("LoadServer");
                 options.StripeProducts = new List<ProductObj>();
@@ -57,12 +57,18 @@ namespace NetworkMonitor.Payment
             services.AddSingleton<IStripeService, StripeService>();
             services.AddSingleton<IFileRepo, FileRepo>();
             services.AddSingleton<INetLoggerFactory, NetLoggerFactory>();
+            services.AddSingleton<IRabbitListener, RabbitListener>();
             services.AddSingleton(_cancellationTokenSource);
             services.AddAsyncServiceInitialization()
         .AddInitAction<IStripeService>(async (stripeService) =>
         {
             await stripeService.Init();
-        });
+        })
+         .AddInitAction<IRabbitListener>((rabbitListener) =>
+                    {
+                        return Task.CompletedTask;
+                    });
+
             services.AddControllersWithViews().AddNewtonsoftJson(options =>
             {
                 options.SerializerSettings.ContractResolver = new DefaultContractResolver

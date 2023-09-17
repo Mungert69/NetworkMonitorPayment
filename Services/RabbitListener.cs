@@ -4,16 +4,30 @@ using NetworkMonitor.Payment.Services;
 using System.Threading.Tasks;
 using System;
 using MetroLog;
+using NetworkMonitor.Utils.Helpers;
+using NetworkMonitor.Objects.Factory;
 namespace NetworkMonitor.Objects.Repository
 {
+    
     public class RabbitListener : RabbitListenerBase
     {
+
         private IStripeService _stripeService;
-        public RabbitListener(ILogger logger,SystemUrl systemUrl, IStripeService stripeService): base(logger, systemUrl)
+        public RabbitListener(IStripeService stripeService, INetLoggerFactory loggerFactory, SystemParamsHelper systemParamsHelper) : base(DeriveLogger(loggerFactory), DeriveSystemUrl(systemParamsHelper))
         {
             _stripeService = stripeService;
 	    Setup();
          }
+
+          private static ILogger DeriveLogger(INetLoggerFactory loggerFactory)
+        {
+            return loggerFactory.GetLogger("RabbitListener"); 
+        }
+
+        private static SystemUrl DeriveSystemUrl(SystemParamsHelper systemParamsHelper)
+        {
+            return systemParamsHelper.GetSystemParams().ThisSystemUrl;
+        }
         protected override void InitRabbitMQObjs()
         {
             _rabbitMQObjs.Add(new RabbitMQObj()
