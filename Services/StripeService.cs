@@ -37,13 +37,13 @@ namespace NetworkMonitor.Payment.Services
         private ILogger _logger;
         private IFileRepo _fileRepo;
         private INetLoggerFactory _loggerFactory;
-        private SystemParamsHelper _systemParamsHelper;
+        private ISystemParamsHelper _systemParamsHelper;
 
         private ConcurrentBag<RegisteredUser> _registeredUsers = new ConcurrentBag<RegisteredUser>();
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
         public ConcurrentBag<RegisteredUser> RegisteredUsers { get => _registeredUsers; }
         public readonly IOptions<PaymentOptions> options;
-        public StripeService(INetLoggerFactory loggerFactory,SystemParamsHelper systemParamsHelper, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
+        public StripeService(INetLoggerFactory loggerFactory,ISystemParamsHelper systemParamsHelper, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
         {
             _loggerFactory=loggerFactory;
             _systemParamsHelper=systemParamsHelper;
