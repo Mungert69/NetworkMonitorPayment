@@ -114,7 +114,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 var updateProductObj=new UpdateProductObj(){
                     Products=this.options.Value.StripeProducts,
-                    PaymentServerUrl=this.options.Value.PaymentServerUrl
+                    PaymentServerUrl=_systemParamsHelper.GetSystemParams().ThisSystemUrl.ExternalUrl
                 };
                 await PublishRepo.UpdateProductsAsync(_logger, _rabbitRepos, updateProductObj);
             }
