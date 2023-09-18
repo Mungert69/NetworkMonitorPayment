@@ -13,13 +13,7 @@ using NetworkMonitor.Utils.Helpers;
 using NetworkMonitor.Objects.Factory;
 namespace NetworkMonitor.Utils.Helpers
 {
-    public interface ISystemParamsHelper
-    {
-        string GetPublicIP();
-        SystemParams GetSystemParams();
-        PingParams GetPingParams();
-    }
-
+  
     public class PaymentParamsHelper : ISystemParamsHelper
     {
 

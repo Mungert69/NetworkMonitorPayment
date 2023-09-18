@@ -17,11 +17,11 @@ namespace NetworkMonitor.Objects.Repository
 }
 
     
-    public class RabbitListener : RabbitListenerBase
+    public class RabbitListener : RabbitListenerBase,IRabbitListener
     {
 
         private IStripeService _stripeService;
-        public RabbitListener(IStripeService stripeService, INetLoggerFactory loggerFactory, SystemParamsHelper systemParamsHelper) : base(DeriveLogger(loggerFactory), DeriveSystemUrl(systemParamsHelper))
+        public RabbitListener(IStripeService stripeService, INetLoggerFactory loggerFactory, ISystemParamsHelper systemParamsHelper) : base(DeriveLogger(loggerFactory), DeriveSystemUrl(systemParamsHelper))
         {
             _stripeService = stripeService;
 	    Setup();
@@ -32,7 +32,7 @@ namespace NetworkMonitor.Objects.Repository
             return loggerFactory.GetLogger("RabbitListener"); 
         }
 
-        private static SystemUrl DeriveSystemUrl(SystemParamsHelper systemParamsHelper)
+        private static SystemUrl DeriveSystemUrl(ISystemParamsHelper systemParamsHelper)
         {
             return systemParamsHelper.GetSystemParams().ThisSystemUrl;
         }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;   
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -58,6 +59,7 @@ namespace NetworkMonitor.Payment
             services.AddSingleton<IFileRepo, FileRepo>();
             services.AddSingleton<INetLoggerFactory, NetLoggerFactory>();
             services.AddSingleton<IRabbitListener, RabbitListener>();
+            services.AddSingleton<ISystemParamsHelper, SystemParamsHelper>();
             services.AddSingleton(_cancellationTokenSource);
             services.AddAsyncServiceInitialization()
         .AddInitAction<IStripeService>(async (stripeService) =>
