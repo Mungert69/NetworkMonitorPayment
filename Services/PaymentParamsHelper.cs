@@ -21,6 +21,7 @@ namespace NetworkMonitor.Utils.Helpers
         private SystemUrl _thisSystemUrl;
         public PaymentParamsHelper(SystemUrl thisSystemUrl)
         {
+            _thisSystemUrl=thisSystemUrl;
 
         }
         public string GetPublicIP()
