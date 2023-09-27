@@ -22,6 +22,7 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> WakeUp();
         Task<ResultObj> PaymentCheck();
         Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction);
+        Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction);
         Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser);
         Task<ResultObj> UpdateUserSubscription(Subscription session);
         Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session);
@@ -316,6 +317,65 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
+
+           public async Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction)
+        {
+            var result = new ResultObj();
+            try
+            {
+                var updatePaymentTransaction = _paymentTransactions.Where(w => w.Id == paymentTransaction.Id).FirstOrDefault();
+                if (updatePaymentTransaction != null)
+                {
+                    // If transaction is alreay complete just log the result.
+                    if (updatePaymentTransaction.PingInfosComplete)
+                    {
+                        result.Message = " !! PingInfos Already completed.";
+                        result.Success = true;
+                        return result;
+                    }
+                    updatePaymentTransaction.Result = paymentTransaction.Result;
+                    if (paymentTransaction.PingInfosComplete)
+                    {
+                        updatePaymentTransaction.PingInfosComplete = true;
+                        result.Message += " PingInfos Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
+                        result.Success = true;
+                    }
+                    else
+                    {
+                        var resultService = paymentTransaction.Result;
+                        if (resultService == null)
+                        {
+                            result.Message += " PingInfo Serivce Result for Transaction with ID " + paymentTransaction.Id + " Fail Error was : " + " Result is null ";
+                            result.Success = false;
+                        }
+                        else
+                        {
+                            string? message = paymentTransaction.Result.Message;
+                            result.Message += " PingInfo Serivce Result for Transaction with ID " + paymentTransaction.Id + " Fail Error was : " + message;
+                            if (resultService.Data != null)
+                            {
+                                result.Message += " :: " + resultService.Data.ToString();
+                            }
+                            result.Success = false;
+                        }
+                    }
+                    await SaveTransactions();
+                }
+                else
+                {
+                    result.Message = " Failed to Find PaymentTransaction with Id " + paymentTransaction.Id;
+                    result.Success = false;
+                }
+            }
+            catch (Exception e)
+            {
+                result.Message = " Failed to Update PaymentTransactions with ID " + paymentTransaction.Id + ". Error was : " + e.ToString();
+                result.Success = false;
+                _logger.Error(result.Message);
+            }
+            return result;
+        }
+     
         public async Task<ResultObj> UpdateUserSubscription(Subscription session)
         {
             var result = new ResultObj();
@@ -366,7 +426,9 @@ namespace NetworkMonitor.Payment.Services
                 {
                     paymentTransaction.UserInfo = userInfo;
                     await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
-                    result.Message += " Success : Published event UpdateUserSubscription";
+                    result.Message += " Success : Published event UpdateUserSubscription ";
+                     await PublishRepo.UpdateUserPingInfosAsync(_logger, _rabbitRepos, paymentTransaction);
+                    result.Message += " Success : Published event UpdateUserPingInfos ";
                     result.Success = true;
                 }
                 else

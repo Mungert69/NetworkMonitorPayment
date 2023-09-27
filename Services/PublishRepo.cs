@@ -44,6 +44,23 @@ namespace NetworkMonitor.Objects.Repository
                 logger.Error(" Error in PublishRepo.UpdateUserSubscriptionAsync. Error was : " + ex.Message);
             }
              }
+
+               public static async Task UpdateUserPingInfosAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
+        {
+            IRabbitRepo rabbitRepo;
+             try
+            {
+                  rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
+                 await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserPingInfos", paymentTransaction);
+                logger.Info(" Published event updateUserPingInfos for Customer = " + paymentTransaction.UserInfo.CustomerId);
+
+            }
+            catch (Exception ex)
+            {
+                logger.Error(" Error in PublishRepo.UpdateUserPingInfosAsync. Error was : " + ex.Message);
+            }
+        }
+      
         public static async Task CreateUserSubscriptionAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
             try{
