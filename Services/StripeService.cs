@@ -510,7 +510,7 @@ namespace NetworkMonitor.Payment.Services
                     UserEmail = userInfo.Email,
                     ExternalUrl = externalUrl
                 };
-                RegisterUser(RegisteredUser);
+                await RegisterUser(RegisteredUser);
                 paymentTransaction.ExternalUrl = externalUrl;
                 if (userInfo.UserID != null)
                 {
