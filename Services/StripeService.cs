@@ -21,6 +21,7 @@ namespace NetworkMonitor.Payment.Services
         Dictionary<string, string> SessionList { get; set; }
         Task<ResultObj> WakeUp();
         Task<ResultObj> PaymentCheck();
+
         Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction);
         Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction);
         Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser);
@@ -44,10 +45,10 @@ namespace NetworkMonitor.Payment.Services
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
         public ConcurrentBag<RegisteredUser> RegisteredUsers { get => _registeredUsers; }
         public readonly IOptions<PaymentOptions> options;
-        public StripeService(INetLoggerFactory loggerFactory,ISystemParamsHelper systemParamsHelper, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
+        public StripeService(INetLoggerFactory loggerFactory, ISystemParamsHelper systemParamsHelper, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
         {
-            _loggerFactory=loggerFactory;
-            _systemParamsHelper=systemParamsHelper;
+            _loggerFactory = loggerFactory;
+            _systemParamsHelper = systemParamsHelper;
             _token = cancellationTokenSource.Token;
             _fileRepo = fileRepo;
             this.options = options;
@@ -71,22 +72,23 @@ namespace NetworkMonitor.Payment.Services
                 {
                     result.Message += " Loaded " + _paymentTransactions.Count + " PaymentTranctions from State. ";
                 }
-                
+
                 if (_registeredUsers != null)
                 {
                     result.Message += " Loaded " + _registeredUsers.Count + " RegisteredUsers from State. ";
                 }
-                
+
                 result.Success = true;
             }
             catch (Exception e)
             {
-              
+
                 result.Success = false;
                 result.Message += " Error Loading State . Error was : " + e.ToString() + " . ";
             }
-            finally{
-                  if (_paymentTransactions == null)
+            finally
+            {
+                if (_paymentTransactions == null)
                 {
                     _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
                     result.Message += " Failed to load PaymentTransactions from State. Setting new ConcurrentBag<PaymentTransaction>() ";
@@ -101,7 +103,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 this.options.Value.SystemUrls.ForEach(f =>
                 {
-                    ISystemParamsHelper paymentParamsHelper=new PaymentParamsHelper(f);
+                    ISystemParamsHelper paymentParamsHelper = new PaymentParamsHelper(f);
                     _logger.Info(" : StripeService : Init : Adding IRabbitRepo for : " + f.ExternalUrl + " : ");
                     _rabbitRepos.Add(new RabbitRepo(_loggerFactory, paymentParamsHelper));
                 });
@@ -113,9 +115,10 @@ namespace NetworkMonitor.Payment.Services
             }
             try
             {
-                var updateProductObj=new UpdateProductObj(){
-                    Products=this.options.Value.StripeProducts,
-                    PaymentServerUrl=_systemParamsHelper.GetSystemParams().ThisSystemUrl.ExternalUrl
+                var updateProductObj = new UpdateProductObj()
+                {
+                    Products = this.options.Value.StripeProducts,
+                    PaymentServerUrl = _systemParamsHelper.GetSystemParams().ThisSystemUrl.ExternalUrl
                 };
                 await PublishRepo.UpdateProductsAsync(_logger, _rabbitRepos, updateProductObj);
             }
@@ -274,13 +277,25 @@ namespace NetworkMonitor.Payment.Services
                         return result;
                     }
                     updatePaymentTransaction.Result = paymentTransaction.Result;
-                    if (paymentTransaction.IsComplete)
+                    if (paymentTransaction.Result.Success)
                     {
                         updatePaymentTransaction.IsComplete = true;
                         updatePaymentTransaction.CompletedDate = DateTime.Now;
                         // log the payment transaction to result.Message. Showing Created or Updatee, UserInfo, ID and the EventDate.
                         result.Message += " Payment Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
-                        result.Success = true;
+                        try
+                        {
+                            await PublishRepo.UpdateUserPingInfosAsync(_logger, _rabbitRepos, updatePaymentTransaction);
+                            result.Message += " Success : Published event UpdateUserPingInfos ";
+                            result.Success = true;
+
+                        }
+                        catch (Exception e)
+                        {
+                            result.Message += "Error : failed Publish UpdateUserPingInfos . Error was : " + e.Message;
+                            _logger.Error("Error : failed Publish UpdateUserPingInfos . Error was : " + e.ToString());
+                            result.Success = false;
+                        }
                     }
                     else
                     {
@@ -318,7 +333,7 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-           public async Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction)
+        public async Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction)
         {
             var result = new ResultObj();
             try
@@ -334,7 +349,7 @@ namespace NetworkMonitor.Payment.Services
                         return result;
                     }
                     updatePaymentTransaction.Result = paymentTransaction.Result;
-                    if (paymentTransaction.PingInfosComplete)
+                    if (paymentTransaction.Result.Success)
                     {
                         updatePaymentTransaction.PingInfosComplete = true;
                         result.Message += " PingInfos Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
@@ -375,7 +390,7 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-     
+
         public async Task<ResultObj> UpdateUserSubscription(Subscription session)
         {
             var result = new ResultObj();
@@ -427,8 +442,6 @@ namespace NetworkMonitor.Payment.Services
                     paymentTransaction.UserInfo = userInfo;
                     await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
                     result.Message += " Success : Published event UpdateUserSubscription ";
-                     await PublishRepo.UpdateUserPingInfosAsync(_logger, _rabbitRepos, paymentTransaction);
-                    result.Message += " Success : Published event UpdateUserPingInfos ";
                     result.Success = true;
                 }
                 else
@@ -453,6 +466,8 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
+
+       
         public async Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session)
         {
             var result = new ResultObj();

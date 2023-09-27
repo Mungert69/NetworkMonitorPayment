@@ -12,8 +12,8 @@ namespace NetworkMonitor.Objects.Repository
         public static async Task UpdateProductsAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, UpdateProductObj updateProductObj)
         {
 
-             logger.Info(" Publishing products : " + JsonConvert.SerializeObject(updateProductObj));
-            
+            logger.Info(" Publishing products : " + JsonConvert.SerializeObject(updateProductObj));
+
             // publish to all systems.
             foreach (IRabbitRepo rabbitRepo in rabbitRepos)
             {
@@ -34,24 +34,26 @@ namespace NetworkMonitor.Objects.Repository
         }
         public static async Task UpdateUserSubscriptionAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
-            try{
-                 IRabbitRepo rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
-            await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserSubscription", paymentTransaction);
-            logger.Info(" Published event updateUserSubscription for Customer = " + paymentTransaction.UserInfo.CustomerId);
-      
+            try
+            {
+                IRabbitRepo rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
+                await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserSubscription", paymentTransaction);
+                logger.Info(" Published event updateUserSubscription for Customer = " + paymentTransaction.UserInfo.CustomerId);
+
             }
-            catch(Exception ex){
+            catch (Exception ex)
+            {
                 logger.Error(" Error in PublishRepo.UpdateUserSubscriptionAsync. Error was : " + ex.Message);
             }
-             }
+        }
 
-               public static async Task UpdateUserPingInfosAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
+        public static async Task UpdateUserPingInfosAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
             IRabbitRepo rabbitRepo;
-             try
+            try
             {
-                  rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
-                 await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserPingInfos", paymentTransaction);
+                rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
+                await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserPingInfos", paymentTransaction);
                 logger.Info(" Published event updateUserPingInfos for Customer = " + paymentTransaction.UserInfo.CustomerId);
 
             }
@@ -60,18 +62,20 @@ namespace NetworkMonitor.Objects.Repository
                 logger.Error(" Error in PublishRepo.UpdateUserPingInfosAsync. Error was : " + ex.Message);
             }
         }
-      
+
         public static async Task CreateUserSubscriptionAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
-            try{
+            try
+            {
                 IRabbitRepo rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
-            await rabbitRepo.PublishAsync<PaymentTransaction>("createUserSubscription", paymentTransaction);
-            logger.Info(" Published event createUserSubscription for User = " + paymentTransaction.UserInfo.UserID);
-      
+                await rabbitRepo.PublishAsync<PaymentTransaction>("createUserSubscription", paymentTransaction);
+                logger.Info(" Published event createUserSubscription for User = " + paymentTransaction.UserInfo.UserID);
+
             }
-            catch(Exception ex){
+            catch (Exception ex)
+            {
                 logger.Error(" Error in PublishRepo.CreateUserSubscriptionAsync. Error was : " + ex.Message);
             }
-              }
+        }
     }
 }
