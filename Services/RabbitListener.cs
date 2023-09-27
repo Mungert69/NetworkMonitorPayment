@@ -47,6 +47,11 @@ namespace NetworkMonitor.Objects.Repository
             _rabbitMQObjs.Add(new RabbitMQObj()
             {
                 ExchangeName = "pingInfosComplete",
+                FuncName = "pingInfosComplete"
+            });
+             _rabbitMQObjs.Add(new RabbitMQObj()
+            {
+                ExchangeName = "paymentComplete",
                 FuncName = "paymentComplete"
             });
             _rabbitMQObjs.Add(new RabbitMQObj()
