@@ -183,13 +183,13 @@ namespace NetworkMonitor.Payment.Controllers
                 Console.WriteLine($"Session ID: {session.Id}");
                 // Take some action based on session.
             }
-            /*if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
+            if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
                 await _stripeService.UpdateUserSubscription(session);
                 Console.WriteLine($"Creating customer subcription for customerId: {session.Customer}");
                
-            }*/
+            }
             if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
