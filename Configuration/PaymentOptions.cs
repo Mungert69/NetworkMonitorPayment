@@ -12,6 +12,7 @@ public class PaymentOptions
     public string PayPalSecret { get; set; }
     public string PaymentServerUrl { get; set; }
     public List<SystemUrl> SystemUrls { get; set; }
+    public SystemUrl LocalSystemUrl {get;set;}
     public string LoadServer{get;set;}
     public List<ProductObj> StripeProducts { get => _stripeProducts; set => _stripeProducts = value; }
 
