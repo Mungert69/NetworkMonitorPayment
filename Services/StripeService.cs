@@ -282,7 +282,7 @@ namespace NetworkMonitor.Payment.Services
                         updatePaymentTransaction.IsComplete = true;
                         updatePaymentTransaction.CompletedDate = DateTime.Now;
                         // log the payment transaction to result.Message. Showing Created or Updatee, UserInfo, ID and the EventDate.
-                        result.Message += " Payment Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
+                        result.Message += " Payment Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate+ " : Result : "+paymentTransaction.Result.Message;
                         try
                         {
                             await PublishRepo.UpdateUserPingInfosAsync(_logger, _rabbitRepos, updatePaymentTransaction);
@@ -352,7 +352,7 @@ namespace NetworkMonitor.Payment.Services
                     if (paymentTransaction.Result.Success)
                     {
                         updatePaymentTransaction.PingInfosComplete = true;
-                        result.Message += " PingInfos Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate;
+                        result.Message += " PingInfos Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate+ " : Result : "+paymentTransaction.Result.Message;
                         result.Success = true;
                     }
                     else
