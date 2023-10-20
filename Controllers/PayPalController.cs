@@ -12,7 +12,7 @@ using Stripe.Checkout;
 using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Objects.ServiceMessage;
-using MetroLog;
+using Microsoft.Extensions.Logging;
 namespace NetworkMonitor.Payment.Controllers
 {
     public class PayPalController
@@ -21,9 +21,9 @@ namespace NetworkMonitor.Payment.Controllers
         private IStripeService _stripeService;
         private ILogger _logger;
         // Constructor witch same parameters ad PaymentsConroller
-        public PayPalController(IOptions<PaymentOptions> options, IStripeService stripeService, INetLoggerFactory loggerFactory)
+        public PayPalController(IOptions<PaymentOptions> options, IStripeService stripeService, ILogger<PayPalController> logger)
         {
-            _logger = loggerFactory.GetLogger("PayPalController");
+            _logger = logger;
             _stripeService = stripeService;
             this.options = options;
         }

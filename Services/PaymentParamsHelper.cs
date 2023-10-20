@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Security.Principal;
 using System.Runtime.InteropServices;
 using System.Net.Http;
-using MetroLog;
+using Microsoft.Extensions.Logging;
 using RestSharp;
 using Newtonsoft.Json;
 using NetworkMonitor.Utils.Helpers;

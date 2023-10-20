@@ -10,7 +10,7 @@ using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Utils.Helpers;
 using Microsoft.Extensions.Options;
-using MetroLog;
+using Microsoft.Extensions.Logging;
 using Stripe;
 using Stripe.Checkout;
 
@@ -38,21 +38,21 @@ namespace NetworkMonitor.Payment.Services
         private List<IRabbitRepo> _rabbitRepos = new List<IRabbitRepo>();
         private ILogger _logger;
         private IFileRepo _fileRepo;
-        private INetLoggerFactory _loggerFactory;
+        private ILoggerFactory _loggerFactory;
         private ISystemParamsHelper _systemParamsHelper;
 
         private ConcurrentBag<RegisteredUser> _registeredUsers = new ConcurrentBag<RegisteredUser>();
         public Dictionary<string, string> SessionList { get => _sessionList; set => _sessionList = value; }
         public ConcurrentBag<RegisteredUser> RegisteredUsers { get => _registeredUsers; }
         public readonly IOptions<PaymentOptions> options;
-        public StripeService(INetLoggerFactory loggerFactory, ISystemParamsHelper systemParamsHelper, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
+        public StripeService(ILogger<StripeService> logger, ILoggerFactory loggerFactory, ISystemParamsHelper systemParamsHelper, IOptions<PaymentOptions> options, CancellationTokenSource cancellationTokenSource, IFileRepo fileRepo)
         {
-            _loggerFactory = loggerFactory;
             _systemParamsHelper = systemParamsHelper;
             _token = cancellationTokenSource.Token;
             _fileRepo = fileRepo;
             this.options = options;
-            _logger = loggerFactory.GetLogger("StripeService");
+            _logger = logger;
+            _loggerFactory= loggerFactory;
         }
         public async Task Init()
         {
@@ -104,8 +104,8 @@ namespace NetworkMonitor.Payment.Services
                 this.options.Value.SystemUrls.ForEach(f =>
                 {
                     ISystemParamsHelper paymentParamsHelper = new PaymentParamsHelper(f);
-                    _logger.Info(" : StripeService : Init : Adding IRabbitRepo for : " + f.ExternalUrl + " : ");
-                    _rabbitRepos.Add(new RabbitRepo(_loggerFactory, paymentParamsHelper));
+                    _logger.LogInformation(" : StripeService : Init : Adding IRabbitRepo for : " + f.ExternalUrl + " : ");
+                    _rabbitRepos.Add(new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), paymentParamsHelper));
                 });
             }
             catch (Exception e)
@@ -138,23 +138,23 @@ namespace NetworkMonitor.Payment.Services
             result.Message += " Finished StripeService Init ";
             result.Success = result.Success && true;
             if (result.Success)
-                _logger.Info(result.Message);
-            else _logger.Fatal(result.Message);
+                _logger.LogInformation(result.Message);
+            else _logger.LogCritical(result.Message);
 
         }
         public void Shutdown()
         {
-            _logger.Warn(" : SHUTDOWN started :");
+            _logger.LogWarning(" : SHUTDOWN started :");
             var result = SaveTransactions().Result;
             if (result.Success)
             {
-                _logger.Info(result.Message);
+                _logger.LogInformation(result.Message);
             }
             else
             {
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
-            _logger.Warn(" : SHUTDOWN completed :");
+            _logger.LogWarning(" : SHUTDOWN completed :");
         }
         // A method that takes the paramter registerUser and adds it to the list of registerd users. Checing if it already exists first use UserId and CustomerId to match.
         public async Task<ResultObj> RegisterUser(RegisteredUser registeredUser)
@@ -210,7 +210,7 @@ namespace NetworkMonitor.Payment.Services
                     if (p.RetryCount > 5)
                     {
                         //TODO notify user of failure.
-                        _logger.Error(" Payment Transaction Failed for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
+                        _logger.LogError(" Payment Transaction Failed for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
                     }
                     await SaveTransactions();
                     Task.Delay(500).Wait();
@@ -218,13 +218,13 @@ namespace NetworkMonitor.Payment.Services
                 await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepos, true);
                 result.Message += " Payment Transaction Queue Checked ";
                 result.Success = true;
-                //_logger.Info(result.Message);
+                //_logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
                 result.Message = " Failed to check Payment Transaction Queue . Error was : " + e.ToString();
                 result.Success = false;
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -240,7 +240,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 result.Message += " Failed to Save RegisteredUsers . Error was : " + e.ToString();
                 result.Success = false;
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -257,7 +257,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 result.Message = " Failed to Save Transactions. Error was : " + e.ToString();
                 result.Success = false;
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -293,7 +293,7 @@ namespace NetworkMonitor.Payment.Services
                         catch (Exception e)
                         {
                             result.Message += "Error : failed Publish UpdateUserPingInfos . Error was : " + e.Message;
-                            _logger.Error("Error : failed Publish UpdateUserPingInfos . Error was : " + e.ToString());
+                            _logger.LogError("Error : failed Publish UpdateUserPingInfos . Error was : " + e.ToString());
                             result.Success = false;
                         }
                     }
@@ -328,7 +328,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 result.Message = " Failed to Update PaymentTransactions with ID " + paymentTransaction.Id + ". Error was : " + e.ToString();
                 result.Success = false;
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -386,7 +386,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 result.Message = " Failed to Update PaymentTransactions with ID " + paymentTransaction.Id + ". Error was : " + e.ToString();
                 result.Success = false;
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -426,13 +426,13 @@ namespace NetworkMonitor.Payment.Services
                     else
                     {
                         result.Message += " Error : Failed to find Product with PriceID " + item.Price.Id;
-                        _logger.Error(" Failed to find Product with PriceID " + item.Price.Id);
+                        _logger.LogError(" Failed to find Product with PriceID " + item.Price.Id);
                     }
                 }
                 else
                 {
                     result.Message += " Error : Subcription Items contains no Subscription for CustomerID " + session.CustomerId;
-                    _logger.Error(" Subcription Items contains no Subscription for CustomerID " + session.CustomerId);
+                    _logger.LogError(" Subcription Items contains no Subscription for CustomerID " + session.CustomerId);
                 }
                 userInfo.CustomerId = session.CustomerId;
                 string externalUrl = GetExternalUrl("", userInfo.CustomerId);
@@ -449,12 +449,12 @@ namespace NetworkMonitor.Payment.Services
                     result.Message += " Error : failed update customer with sessionId = " + session.Id;
                     result.Success = false;
                 }
-                _logger.Info(result.Message);
+                _logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
                 result.Message += "Error : failed publish UpdateUserSubscription . Error was : " + e.Message;
-                _logger.Error("Error : failed publish UpdateUserSubscription . Error was : " + e.ToString());
+                _logger.LogError("Error : failed publish UpdateUserSubscription . Error was : " + e.ToString());
                 result.Success = false;
             }
             finally
@@ -524,12 +524,12 @@ namespace NetworkMonitor.Payment.Services
                     result.Message += "Error : failed to find user with sessionId = " + session.Id;
                     result.Success = false;
                 }
-                _logger.Info(result.Message);
+                _logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
                 result.Message += "Error : failed publish UpdateUserSubscription . Error was : " + e.Message;
-                _logger.Error("Error : failed publish UpdateUserSubscription . Error was : " + e.ToString());
+                _logger.LogError("Error : failed publish UpdateUserSubscription . Error was : " + e.ToString());
                 result.Success = false;
             }
             finally
@@ -550,13 +550,13 @@ namespace NetworkMonitor.Payment.Services
                 await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepos, true);
                 result.Message += " Received Wakeup so Published paymentServiceReady event ";
                 result.Success = true;
-                _logger.Info(result.Message);
+                _logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
                 result.Message += " Failed to publish paymentServiceReady event . Error was : " + e.ToString();
                 result.Success = false;
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }

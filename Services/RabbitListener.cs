@@ -1,12 +1,13 @@
 using RabbitMQ.Client.Events;
 using NetworkMonitor.Objects.ServiceMessage;
-using NetworkMonitor.Payment.Services;
+using NetworkMonitor.Objects;
+using NetworkMonitor.Objects.Repository;
 using System.Threading.Tasks;
 using System;
-using MetroLog;
+using Microsoft.Extensions.Logging;
 using NetworkMonitor.Utils.Helpers;
 using NetworkMonitor.Objects.Factory;
-namespace NetworkMonitor.Objects.Repository
+namespace NetworkMonitor.Payment.Services
 {
     public interface IRabbitListener
 {
@@ -21,16 +22,13 @@ namespace NetworkMonitor.Objects.Repository
     {
 
         private IStripeService _stripeService;
-        public RabbitListener(IStripeService stripeService, INetLoggerFactory loggerFactory, ISystemParamsHelper systemParamsHelper) : base(DeriveLogger(loggerFactory), DeriveSystemUrl(systemParamsHelper))
+        public RabbitListener(IStripeService stripeService, ILogger<RabbitListenerBase> logger, ISystemParamsHelper systemParamsHelper) : base(logger, DeriveSystemUrl(systemParamsHelper))
         {
             _stripeService = stripeService;
 	    Setup();
          }
 
-          private static ILogger DeriveLogger(INetLoggerFactory loggerFactory)
-        {
-            return loggerFactory.GetLogger("RabbitListener"); 
-        }
+        
 
         private static SystemUrl DeriveSystemUrl(ISystemParamsHelper systemParamsHelper)
         {
@@ -86,7 +84,7 @@ namespace NetworkMonitor.Objects.Repository
                         }
                          catch (Exception ex)
                         {
-                            _logger.Error(" Error : RabbitListener.DeclareConsumers.paymentWakeUp " + ex.Message);
+                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentWakeUp " + ex.Message);
                         }
                     };
                         break;
@@ -100,7 +98,7 @@ namespace NetworkMonitor.Objects.Repository
                         }
                         catch (Exception ex)
                         {
-                            _logger.Error(" Error : RabbitListener.DeclareConsumers.paymentComplete " + ex.Message);
+                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentComplete " + ex.Message);
                         }
                     };
                         break;
@@ -114,7 +112,7 @@ namespace NetworkMonitor.Objects.Repository
                         }
                         catch (Exception ex)
                         {
-                            _logger.Error(" Error : RabbitListener.DeclareConsumers.pingInfosComplete " + ex.Message);
+                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.pingInfosComplete " + ex.Message);
                         }
                     };
                         break;
@@ -128,7 +126,7 @@ namespace NetworkMonitor.Objects.Repository
                         }
                         catch (Exception ex)
                         {
-                            _logger.Error(" Error : RabbitListener.DeclareConsumers.paymentCheck " + ex.Message);
+                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentCheck " + ex.Message);
                         }
                     };
                         break;
@@ -142,7 +140,7 @@ namespace NetworkMonitor.Objects.Repository
                         }
                         catch (Exception ex)
                         {
-                            _logger.Error(" Error : RabbitListener.DeclareConsumers.registerUser " + ex.Message);
+                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.registerUser " + ex.Message);
                         }
                     };
                         break;
@@ -168,14 +166,14 @@ namespace NetworkMonitor.Objects.Repository
             try
             {
                 result = await _stripeService.WakeUp();
-                _logger.Info(result.Message);
+                _logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
                 result.Data = null;
                 result.Success = false;
                 result.Message += "Error : Failed to receive message : Error was : " + e.Message + " ";
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -187,14 +185,14 @@ namespace NetworkMonitor.Objects.Repository
             try
             {
                 result = await _stripeService.PaymentCheck();
-                _logger.Info(result.Message);
+                _logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
                 result.Data = null;
                 result.Success = false;
                 result.Message += "Error : Failed to receive message : Error was : " + e.Message + " ";
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -206,14 +204,14 @@ namespace NetworkMonitor.Objects.Repository
             try
             {
                 result = await _stripeService.PaymentComplete(paymentTransaction);
-                _logger.Info(result.Message);
+                _logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
                 result.Data = null;
                 result.Success = false;
                 result.Message += "Error : Failed to receive message : Error was : " + e.Message + " ";
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -226,14 +224,14 @@ namespace NetworkMonitor.Objects.Repository
             try
             {
                 result = await _stripeService.PingInfosComplete(paymentTransaction);
-                _logger.Info(result.Message);
+                _logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
                 result.Data = null;
                 result.Success = false;
                 result.Message += "Error : Failed to receive message : Error was : " + e.Message + " ";
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
             }
             return result;
         }
@@ -244,12 +242,12 @@ namespace NetworkMonitor.Objects.Repository
             try
             {
                 result = await _stripeService.RegisterUser(RegisteredUser);
-               _logger.Info(result.Message);
+               _logger.LogInformation(result.Message);
             }
             catch (Exception ex)
             {
                 string message=" Failed to Register User. Eror was : " + ex.Message;
-                _logger.Error(message );
+                _logger.LogError(message );
                 result.Success = false;
                 result.Message = message;
             }

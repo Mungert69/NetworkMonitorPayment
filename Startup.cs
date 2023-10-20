@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Serialization;
 using Stripe;
 using NetworkMonitor.Payment.Services;
@@ -32,6 +33,10 @@ namespace NetworkMonitor.Payment
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddLogging(builder =>
+               {
+                   builder.AddConsole();
+               });
             StripeConfiguration.AppInfo = new AppInfo
             {
                 Name = "stripe-samples/checkout-single-subscription",
@@ -58,7 +63,6 @@ namespace NetworkMonitor.Payment
            });
             services.AddSingleton<IStripeService, StripeService>();
             services.AddSingleton<IFileRepo, FileRepo>();
-            services.AddSingleton<INetLoggerFactory, NetLoggerFactory>();
             services.AddSingleton<IRabbitListener, RabbitListener>();
             services.AddSingleton<ISystemParamsHelper, SystemParamsHelper>();
             services.AddSingleton(_cancellationTokenSource);

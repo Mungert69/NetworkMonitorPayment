@@ -11,7 +11,7 @@ using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Objects;
-using MetroLog;
+using Microsoft.Extensions.Logging;
 namespace NetworkMonitor.Payment.Controllers
 {
     public class PaymentsController : Controller
@@ -20,9 +20,9 @@ namespace NetworkMonitor.Payment.Controllers
         private readonly IStripeClient client;
         private IStripeService _stripeService;
         private ILogger _logger;
-        public PaymentsController(IOptions<PaymentOptions> options, IStripeService stripeService, INetLoggerFactory loggerFactory)
+        public PaymentsController(IOptions<PaymentOptions> options, IStripeService stripeService, ILogger<PaymentsController> logger)
         {
-            _logger = loggerFactory.GetLogger("PaymentsController");
+            _logger = logger;
             _stripeService = stripeService;
             this.options = options;
             this.client = new StripeClient(this.options.Value.StripeSecretKey);
@@ -39,7 +39,7 @@ namespace NetworkMonitor.Payment.Controllers
             if (_stripeService.RegisteredUsers.Where(w => w.UserId == userId).FirstOrDefault() == null){
                 result.Message+=" Unable to find user with userId "+userId+" .";
                 result.Success=false;
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
@@ -54,7 +54,7 @@ namespace NetworkMonitor.Payment.Controllers
              ProductObj? productObj=this.options.Value.StripeProducts.Where(w => w.ProductName==productName).FirstOrDefault();
              if (productObj==null || productObj.PriceId==null){
                 result.Message+=" Unable to find product info for product name "+productName+ " . ";
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
@@ -85,12 +85,12 @@ namespace NetworkMonitor.Payment.Controllers
                 var session = await service.CreateAsync(options);
                 Response.Headers.Add("Location", session.Url);
                 _stripeService.SessionList.Add(session.Id, userId);
-                _logger.Info("Success : Added UserID " + userId + " to SessionList with customerId " + session.CustomerId + " Add got sessionId " + session.Id);
+                _logger.LogInformation("Success : Added UserID " + userId + " to SessionList with customerId " + session.CustomerId + " Add got sessionId " + session.Id);
                 return new StatusCodeResult(303);
             }
             catch (StripeException e)
             {
-                _logger.Error(" Stripe Error . Error was : "+e.StripeError.Message);
+                _logger.LogError(" Stripe Error . Error was : "+e.StripeError.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
@@ -116,7 +116,7 @@ namespace NetworkMonitor.Payment.Controllers
             if (_stripeService.RegisteredUsers.Where(w => w.CustomerId == customerId).FirstOrDefault() == null){
                 result.Message+=" Unable to find user with customerId "+customerId+" .";
                 result.Success=false;
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
@@ -127,7 +127,7 @@ namespace NetworkMonitor.Payment.Controllers
             }
              if (customerId==null || customerId=="" || customerId.Length>100){
                 result.Message+=" Customer Portal Request : Malformed CustomerID.";
-                _logger.Error(result.Message);
+                _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
@@ -179,7 +179,7 @@ namespace NetworkMonitor.Payment.Controllers
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
                 await _stripeService.CreateUserSubscription(session);
-                _logger.Info("SUCCESS : Got userId " + _stripeService.SessionList[session.Id]);
+                _logger.LogInformation("SUCCESS : Got userId " + _stripeService.SessionList[session.Id]);
                 Console.WriteLine($"Session ID: {session.Id}");
                 // Take some action based on session.
             }

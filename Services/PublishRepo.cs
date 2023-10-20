@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NetworkMonitor.Objects.ServiceMessage;
 using Newtonsoft.Json;
-using MetroLog;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 namespace NetworkMonitor.Objects.Repository
 {
@@ -12,13 +12,13 @@ namespace NetworkMonitor.Objects.Repository
         public static async Task UpdateProductsAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, UpdateProductObj updateProductObj)
         {
 
-            logger.Info(" Publishing products : " + JsonConvert.SerializeObject(updateProductObj));
+            logger.LogInformation(" Publishing products : " + JsonConvert.SerializeObject(updateProductObj));
 
             // publish to all systems.
             foreach (IRabbitRepo rabbitRepo in rabbitRepos)
             {
                 await rabbitRepo.PublishAsync<UpdateProductObj>("updateProducts", updateProductObj);
-                logger.Info(" Published event updateProducts to: " + rabbitRepo.SystemUrl);
+                logger.LogInformation(" Published event updateProducts to: " + rabbitRepo.SystemUrl);
             }
         }
         public static async Task PaymentReadyAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, bool isReady)
@@ -29,7 +29,7 @@ namespace NetworkMonitor.Objects.Repository
             foreach (IRabbitRepo rabbitRepo in rabbitRepos)
             {
                 await rabbitRepo.PublishAsync<PaymentServiceInitObj>("paymentServiceReady", paymentInitObj);
-                logger.Info(" Published event PaymentServiceItitObj.IsPaymentServiceReady = " + isReady);
+                logger.LogInformation(" Published event PaymentServiceItitObj.IsPaymentServiceReady = " + isReady);
             }
         }
         public static async Task UpdateUserSubscriptionAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
@@ -38,12 +38,12 @@ namespace NetworkMonitor.Objects.Repository
             {
                 IRabbitRepo rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
                 await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserSubscription", paymentTransaction);
-                logger.Info(" Published event updateUserSubscription for Customer = " + paymentTransaction.UserInfo.CustomerId);
+                logger.LogInformation(" Published event updateUserSubscription for Customer = " + paymentTransaction.UserInfo.CustomerId);
 
             }
             catch (Exception ex)
             {
-                logger.Error(" Error in PublishRepo.UpdateUserSubscriptionAsync. Error was : " + ex.Message);
+                logger.LogError(" Error in PublishRepo.UpdateUserSubscriptionAsync. Error was : " + ex.Message);
             }
         }
 
@@ -54,12 +54,12 @@ namespace NetworkMonitor.Objects.Repository
             {
                 rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
                 await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserPingInfos", paymentTransaction);
-                logger.Info(" Published event updateUserPingInfos for Customer = " + paymentTransaction.UserInfo.CustomerId);
+                logger.LogInformation(" Published event updateUserPingInfos for Customer = " + paymentTransaction.UserInfo.CustomerId);
 
             }
             catch (Exception ex)
             {
-                logger.Error(" Error in PublishRepo.UpdateUserPingInfosAsync. Error was : " + ex.Message);
+                logger.LogError(" Error in PublishRepo.UpdateUserPingInfosAsync. Error was : " + ex.Message);
             }
         }
 
@@ -69,12 +69,12 @@ namespace NetworkMonitor.Objects.Repository
             {
                 IRabbitRepo rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
                 await rabbitRepo.PublishAsync<PaymentTransaction>("createUserSubscription", paymentTransaction);
-                logger.Info(" Published event createUserSubscription for User = " + paymentTransaction.UserInfo.UserID);
+                logger.LogInformation(" Published event createUserSubscription for User = " + paymentTransaction.UserInfo.UserID);
 
             }
             catch (Exception ex)
             {
-                logger.Error(" Error in PublishRepo.CreateUserSubscriptionAsync. Error was : " + ex.Message);
+                logger.LogError(" Error in PublishRepo.CreateUserSubscriptionAsync. Error was : " + ex.Message);
             }
         }
     }
