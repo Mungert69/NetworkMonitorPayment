@@ -45,14 +45,14 @@ namespace NetworkMonitor.Payment
             };
             services.Configure<PaymentOptions>(options =>
             {
-                options.StripePublishableKey = _config.GetValue<string>("StripePublishableKey");
-                options.StripeSecretKey = _config.GetValue<string>("StripeSecretKey");
-                options.StripeWebhookSecret = _config.GetValue<string>("StripeWebhookSecret");
-                options.StripeDomain = _config.GetValue<string>("Domain");
+                options.StripePublishableKey = _config["StripePublishableKey"] ?? throw new ArgumentNullException("StripePublishableKey");
+                options.StripeSecretKey = _config["StripeSecretKey"] ?? throw new ArgumentNullException("StripeSecretKey");
+                options.StripeWebhookSecret = _config["StripeWebhookSecret"] ?? throw new ArgumentNullException("StripeWebhookSecret");
+                options.StripeDomain = _config["Domain"] ?? throw new ArgumentNullException("Domain");
                options.SystemUrls = _config.GetSection("SystemUrls").Get<List<SystemUrl>>() ?? throw new ArgumentNullException("SystemParams.SystemUrls");
                options.LocalSystemUrl = _config.GetSection("LocalSystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("LocalSystemUrl");
                
-                options.LoadServer = _config.GetValue<string>("LoadServer");
+                options.LoadServer = _config.GetValue<string>("LoadServer") ?? throw new ArgumentNullException("LoadServer");
                 options.StripeProducts = new List<ProductObj>();
                 _config.GetSection("Products").Bind(options.StripeProducts);
             });

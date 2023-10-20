@@ -2,16 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
 using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Options;
-using Stripe;
-using Stripe.Checkout;
 using NetworkMonitor.Payment.Services;
-using NetworkMonitor.Objects.Factory;
-using NetworkMonitor.Objects.ServiceMessage;
 using Microsoft.Extensions.Logging;
 namespace NetworkMonitor.Payment.Controllers
 {

@@ -27,7 +27,7 @@ namespace NetworkMonitor.Payment.Controllers
             this.options = options;
             this.client = new StripeClient(this.options.Value.StripeSecretKey);
         }
-       
+
         [HttpGet("CreateCheckoutSession/{userId}/{productName}")]
         public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId, [FromRoute] string productName)
         {
@@ -36,9 +36,10 @@ namespace NetworkMonitor.Payment.Controllers
 
             // Look for a Registerd User Object in _stripeService.RegisteredUsers with the userId/
             // If not found, return BadRequest with error message
-            if (_stripeService.RegisteredUsers.Where(w => w.UserId == userId).FirstOrDefault() == null){
-                result.Message+=" Unable to find user with userId "+userId+" .";
-                result.Success=false;
+            if (_stripeService.RegisteredUsers.Where(w => w.UserId == userId).FirstOrDefault() == null)
+            {
+                result.Message += " Unable to find user with userId " + userId + " .";
+                result.Success = false;
                 _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
                 {
@@ -48,12 +49,13 @@ namespace NetworkMonitor.Payment.Controllers
                     }
                 });
             }
-             
 
-            
-             ProductObj? productObj=this.options.Value.StripeProducts.Where(w => w.ProductName==productName).FirstOrDefault();
-             if (productObj==null || productObj.PriceId==null){
-                result.Message+=" Unable to find product info for product name "+productName+ " . ";
+
+
+            ProductObj? productObj = this.options.Value.StripeProducts.Where(w => w.ProductName == productName).FirstOrDefault();
+            if (productObj == null || productObj.PriceId == null)
+            {
+                result.Message += " Unable to find product info for product name " + productName + " . ";
                 _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
                 {
@@ -62,14 +64,14 @@ namespace NetworkMonitor.Payment.Controllers
                         Message = result.Message,
                     }
                 });
-             }
+            }
             var options = new SessionCreateOptions
             {
                 SuccessUrl = this.options.Value.StripeDomain + "?success=true&session_id={CHECKOUT_SESSION_ID}&initViewSub=true",
                 CancelUrl = this.options.Value.StripeDomain + "?canceled=true",
                 Mode = "subscription",
-                  
-                 LineItems = new List<SessionLineItemOptions>
+
+                LineItems = new List<SessionLineItemOptions>
                 {
                     new SessionLineItemOptions
                     {
@@ -90,7 +92,7 @@ namespace NetworkMonitor.Payment.Controllers
             }
             catch (StripeException e)
             {
-                _logger.LogError(" Stripe Error . Error was : "+e.StripeError.Message);
+                _logger.LogError(" Stripe Error . Error was : " + e.StripeError.Message);
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
@@ -110,41 +112,43 @@ namespace NetworkMonitor.Payment.Controllers
         [HttpGet("customer-portal/{customerId}")]
         public async Task<IActionResult> CustomerPortal([FromRoute] string customerId)
         {
-               var result = new ResultObj();
+            var result = new ResultObj();
             result.Message = " API : CustomerPortal ";
 
-            if (_stripeService.RegisteredUsers.Where(w => w.CustomerId == customerId).FirstOrDefault() == null){
-                result.Message+=" Unable to find user with customerId "+customerId+" .";
-                result.Success=false;
-                _logger.LogError(result.Message);
-                return BadRequest(new ErrorResponse
-                {
-                    ErrorMessage = new ErrorMessage
-                    {
-                        Message = result.Message,
-                    }
-                });
-            }
-             if (customerId==null || customerId=="" || customerId.Length>100){
-                result.Message+=" Customer Portal Request : Malformed CustomerID.";
-                _logger.LogError(result.Message);
-                return BadRequest(new ErrorResponse
-                {
-                    ErrorMessage = new ErrorMessage
-                    {
-                        Message = result.Message,
-                    }
-                });
-             }
-             /*string sessionId = Request.Form["session_Id"];
-            string customerId = Request.Form["customer_Id"];
-            if (customerId == null)
+            if (_stripeService.RegisteredUsers.Where(w => w.CustomerId == customerId).FirstOrDefault() == null)
             {
-                var checkoutService = new SessionService(this.client);
-                var checkoutSession = await checkoutService.GetAsync(sessionId);
-                customerId = checkoutSession.CustomerId;
+                result.Message += " Unable to find user with customerId " + customerId + " .";
+                result.Success = false;
+                _logger.LogError(result.Message);
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = result.Message,
+                    }
+                });
             }
-            */
+            if (customerId == null || customerId == "" || customerId.Length > 100)
+            {
+                result.Message += " Customer Portal Request : Malformed CustomerID.";
+                _logger.LogError(result.Message);
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = result.Message,
+                    }
+                });
+            }
+            /*string sessionId = Request.Form["session_Id"];
+           string customerId = Request.Form["customer_Id"];
+           if (customerId == null)
+           {
+               var checkoutService = new SessionService(this.client);
+               var checkoutSession = await checkoutService.GetAsync(sessionId);
+               customerId = checkoutSession.CustomerId;
+           }
+           */
             var returnUrl = this.options.Value.StripeDomain;
             var options = new Stripe.BillingPortal.SessionCreateOptions
             {
@@ -178,24 +182,44 @@ namespace NetworkMonitor.Payment.Controllers
             if (stripeEvent.Type == Events.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                await _stripeService.CreateUserSubscription(session);
-                _logger.LogInformation("SUCCESS : Got userId " + _stripeService.SessionList[session.Id]);
-                Console.WriteLine($"Session ID: {session.Id}");
+                if (session != null)
+                {
+                    await _stripeService.CreateUserSubscription(session);
+                    _logger.LogInformation($" Created customer subcription for UserId {_stripeService.SessionList[session.Id]} .");
+                }
+                else
+                {
+                    _logger.LogError("Error : stripeEvent contains no Session object .");
+                }
                 // Take some action based on session.
             }
             if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
-                await _stripeService.UpdateUserSubscription(session);
-                Console.WriteLine($"Creating customer subcription for customerId: {session.Customer}");
-               
+                if (session != null)
+                {
+                    _logger.LogInformation($"Creating customer subcription for customerId: {session.Customer}");
+                    await _stripeService.UpdateUserSubscription(session);
+                    
+                }
+                else
+                {
+                    _logger.LogError("Error : stripeEvent contains no Subscription object .");
+                }
             }
             if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
-                await _stripeService.UpdateUserSubscription(session);
-                Console.WriteLine($"Updating customer subcription for customerId: {session.Customer}");
-
+                if (session != null)
+                {
+                    _logger.LogInformation($"Updating customer subcription for customerId: {session.Customer}");
+              
+                    await _stripeService.UpdateUserSubscription(session);
+                      }
+                else
+                {
+                    _logger.LogError("Error : stripeEvent contains no Subscription object .");
+                }
             }
             return Ok();
         }

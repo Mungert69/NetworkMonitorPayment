@@ -52,7 +52,7 @@ namespace NetworkMonitor.Payment.Services
             _fileRepo = fileRepo;
             this.options = options;
             _logger = logger;
-            _loggerFactory= loggerFactory;
+            _loggerFactory = loggerFactory;
         }
         public async Task Init()
         {
@@ -64,8 +64,8 @@ namespace NetworkMonitor.Payment.Services
                 _token.Register(() => this.Shutdown());
                 _fileRepo.CheckFileExists("PaymentTransactions", _logger);
                 _fileRepo.CheckFileExists("RegisteredUsers", _logger);
-                _paymentTransactions = await _fileRepo.GetStateJsonAsync<ConcurrentBag<PaymentTransaction>>("PaymentTransactions");
-                _registeredUsers = await _fileRepo.GetStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers");
+                _paymentTransactions = await _fileRepo.GetStateJsonAsync<ConcurrentBag<PaymentTransaction>>("PaymentTransactions") ?? new ConcurrentBag<PaymentTransaction>();
+                _registeredUsers = await _fileRepo.GetStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers") ?? new ConcurrentBag<RegisteredUser>();
 
 
                 if (_paymentTransactions != null)
@@ -161,7 +161,9 @@ namespace NetworkMonitor.Payment.Services
         {
             var result = new ResultObj();
             result.Message = " SERVICE : Register User : ";
-            if (_registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.CustomerId == registeredUser.CustomerId).Count() == 0)
+            var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.CustomerId == registeredUser.CustomerId).FirstOrDefault();
+
+            if (user == null)
             {
                 _registeredUsers.Add(registeredUser);
                 result.Message += " Added User : " + registeredUser.UserId + " : " + registeredUser.CustomerId + " : " + registeredUser.ExternalUrl + " : ";
@@ -169,7 +171,6 @@ namespace NetworkMonitor.Payment.Services
             else
             {
                 // Update the existing user.
-                var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.CustomerId == registeredUser.CustomerId).FirstOrDefault();
                 user.CustomerId = registeredUser.CustomerId;
                 user.UserId = registeredUser.UserId;
                 user.ExternalUrl = registeredUser.ExternalUrl;
@@ -184,7 +185,8 @@ namespace NetworkMonitor.Payment.Services
             var result = "";
             if (_registeredUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).Count() > 0)
             {
-                result = _registeredUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).FirstOrDefault().ExternalUrl;
+                var registeredUser = _registeredUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).FirstOrDefault();
+                result = registeredUser.ExternalUrl;
             }
             return result;
         }
@@ -282,7 +284,7 @@ namespace NetworkMonitor.Payment.Services
                         updatePaymentTransaction.IsComplete = true;
                         updatePaymentTransaction.CompletedDate = DateTime.Now;
                         // log the payment transaction to result.Message. Showing Created or Updatee, UserInfo, ID and the EventDate.
-                        result.Message += " Payment Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate+ " : Result : "+paymentTransaction.Result.Message;
+                        result.Message += " Payment Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate + " : Result : " + paymentTransaction.Result.Message;
                         try
                         {
                             await PublishRepo.UpdateUserPingInfosAsync(_logger, _rabbitRepos, updatePaymentTransaction);
@@ -352,7 +354,7 @@ namespace NetworkMonitor.Payment.Services
                     if (paymentTransaction.Result.Success)
                     {
                         updatePaymentTransaction.PingInfosComplete = true;
-                        result.Message += " PingInfos Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate+ " : Result : "+paymentTransaction.Result.Message;
+                        result.Message += " PingInfos Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate + " : Result : " + paymentTransaction.Result.Message;
                         result.Success = true;
                     }
                     else
@@ -436,19 +438,35 @@ namespace NetworkMonitor.Payment.Services
                 }
                 userInfo.CustomerId = session.CustomerId;
                 string externalUrl = GetExternalUrl("", userInfo.CustomerId);
+
+
                 paymentTransaction.ExternalUrl = externalUrl;
                 if (userInfo.CustomerId != null)
                 {
-                    paymentTransaction.UserInfo = userInfo;
-                    await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
-                    result.Message += " Success : Published event UpdateUserSubscription ";
-                    result.Success = true;
+                    if (externalUrl == "")
+                    {
+                        result.Message += " Error : Can not find ExternalUrl for  CustomerID " + session.CustomerId;
+                        _logger.LogError("  Error : Can not find ExternalUrl for CustomerID " + session.CustomerId);
+                        result.Success = false;
+                    }
+                    else
+                    {
+                        paymentTransaction.UserInfo = userInfo;
+                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
+                        result.Message += " Success : Published event UpdateUserSubscription ";
+                        result.Success = true;
+                    }
+
                 }
                 else
                 {
-                    result.Message += " Error : failed update customer with sessionId = " + session.Id;
+                    result.Message += " Error : failed update customer with sessionId = " + session.Id+ " CustomerId is null .";
                     result.Success = false;
+                     _logger.LogError("  Error : Can not find ExternalUrl for CustomerID " + session.CustomerId);
+                       
                 }
+
+
                 _logger.LogInformation(result.Message);
             }
             catch (Exception e)
@@ -467,7 +485,7 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-       
+
         public async Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session)
         {
             var result = new ResultObj();
@@ -523,6 +541,7 @@ namespace NetworkMonitor.Payment.Services
                 {
                     result.Message += "Error : failed to find user with sessionId = " + session.Id;
                     result.Success = false;
+                    _logger.LogError(result.Message);
                 }
                 _logger.LogInformation(result.Message);
             }
