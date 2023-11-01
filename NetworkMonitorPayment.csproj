@@ -5,7 +5,7 @@
     <PublishProfile>DefaultContainer</PublishProfile>
     <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:7.0-jammy-amd64</ContainerBaseImage>
     <ContainerImageName>mungert/networkmonitorpayment</ContainerImageName>
-    <ContainerImageTag>1.0.0</ContainerImageTag>
+    <ContainerImageTag>1.0.1</ContainerImageTag>
 </PropertyGroup>
 
 <PropertyGroup>
