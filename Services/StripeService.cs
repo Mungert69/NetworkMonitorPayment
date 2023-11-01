@@ -144,7 +144,7 @@ namespace NetworkMonitor.Payment.Services
             }
             catch (Exception e)
             {
-                result.Message += " Could Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
+                result.Message += " Could not Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
                 result.Success = false;
             }
             if (_paymentTransactions == null)
