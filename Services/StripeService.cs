@@ -64,8 +64,28 @@ namespace NetworkMonitor.Payment.Services
                 _token.Register(() => this.Shutdown());
                 _fileRepo.CheckFileExists("PaymentTransactions", _logger);
                 _fileRepo.CheckFileExists("RegisteredUsers", _logger);
-                _paymentTransactions = await _fileRepo.GetStateJsonAsync<ConcurrentBag<PaymentTransaction>>("PaymentTransactions") ?? new ConcurrentBag<PaymentTransaction>();
-                _registeredUsers = await _fileRepo.GetStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers") ?? new ConcurrentBag<RegisteredUser>();
+                var paymentTransactionsList = await _fileRepo.GetStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions");
+                if (paymentTransactionsList == null)
+                {
+                    _logger.LogWarning(" PaymentTransactions data is null. ");
+                    _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
+                }
+                else
+                {
+                    _paymentTransactions = new ConcurrentBag<PaymentTransaction>(paymentTransactionsList);
+                }
+
+                var registeredUsersList = await _fileRepo.GetStateJsonAsync<List<RegisteredUser>>("RegisteredUsers");
+                if (registeredUsersList == null)
+                {
+                    _logger.LogWarning(" RegisteredUsers data is null. ");
+                    _registeredUsers = new ConcurrentBag<RegisteredUser>();
+                }
+                else
+                {
+                    _registeredUsers = new ConcurrentBag<RegisteredUser>(registeredUsersList);
+                }
+
 
 
                 if (_paymentTransactions != null)
@@ -234,7 +254,7 @@ namespace NetworkMonitor.Payment.Services
         {
             try
             {
-                await _fileRepo.SaveStateJsonAsync<ConcurrentBag<RegisteredUser>>("RegisteredUsers", _registeredUsers);
+                await _fileRepo.SaveStateJsonAsync<List<RegisteredUser>>("RegisteredUsers", _registeredUsers.ToList());
                 result.Message += " Save RegisteredUsers Completed ";
                 result.Success = true;
             }
@@ -251,7 +271,7 @@ namespace NetworkMonitor.Payment.Services
             var result = new ResultObj();
             try
             {
-                await _fileRepo.SaveStateJsonAsync<ConcurrentBag<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
+                await _fileRepo.SaveStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions.ToList());
                 result.Message = " Save Transactions Completed ";
                 result.Success = true;
             }
@@ -460,10 +480,10 @@ namespace NetworkMonitor.Payment.Services
                 }
                 else
                 {
-                    result.Message += " Error : failed update customer with sessionId = " + session.Id+ " CustomerId is null .";
+                    result.Message += " Error : failed update customer with sessionId = " + session.Id + " CustomerId is null .";
                     result.Success = false;
-                     _logger.LogError("  Error : Can not find ExternalUrl for CustomerID " + session.CustomerId);
-                       
+                    _logger.LogError("  Error : Can not find ExternalUrl for CustomerID " + session.CustomerId);
+
                 }
 
 
