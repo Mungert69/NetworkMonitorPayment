@@ -71,15 +71,15 @@ namespace NetworkMonitor.Objects.Repository
                 logger.LogError(" Error in PublishRepo.UpdateUserPingInfosAsync. Error was : " + ex.Message);
             }
         }
-        public static async Task CreateUserSubscriptionAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
+        public static async Task UpdateUserCustomerIdAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
             try
             {
                 IRabbitRepo? rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
                 if (rabbitRepo != null)
                 {
-                    await rabbitRepo.PublishAsync<PaymentTransaction>("createUserSubscription", paymentTransaction);
-                    logger.LogInformation(" Published event createUserSubscription for User = " + paymentTransaction.UserInfo.UserID);
+                    await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserCustomerId", paymentTransaction);
+                    logger.LogInformation(" Published event updateUserCustomerId for User = " + paymentTransaction.UserInfo.UserID);
                 }
                 else
                 {

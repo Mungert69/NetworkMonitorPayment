@@ -25,8 +25,9 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction);
         Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction);
         Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser);
+        Task<ResultObj> UpdateCustomerID(RegisteredUser registeredUser);
+        Task<ResultObj> UpdateUserCustomerId(string customerId);
         Task<ResultObj> UpdateUserSubscription(Subscription session);
-        Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session);
         Task Init();
         ConcurrentBag<RegisteredUser> RegisteredUsers { get; }
     }
@@ -85,8 +86,6 @@ namespace NetworkMonitor.Payment.Services
                 {
                     _registeredUsers = new ConcurrentBag<RegisteredUser>(registeredUsersList);
                 }
-
-
 
                 if (_paymentTransactions != null)
                 {
@@ -180,18 +179,18 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> RegisterUser(RegisteredUser registeredUser)
         {
             var result = new ResultObj();
-            result.Message = " SERVICE : Register User : ";
-            var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.CustomerId == registeredUser.CustomerId).FirstOrDefault();
+            result.Message = " SERVICE : UpdateRegisteredUser : ";
+            var user = _registeredUsers.Where(w => w.UserEmail == registeredUser.UserEmail || w.UserId == registeredUser.UserId).FirstOrDefault();
 
             if (user == null)
             {
                 _registeredUsers.Add(registeredUser);
-                result.Message += " Added User : " + registeredUser.UserId + " : " + registeredUser.CustomerId + " : " + registeredUser.ExternalUrl + " : ";
+                result.Message += " Added User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : ";
             }
             else
             {
                 // Update the existing user.
-                user.CustomerId = registeredUser.CustomerId;
+                //user.CustomerId = registeredUser.CustomerId;
                 user.UserId = registeredUser.UserId;
                 user.ExternalUrl = registeredUser.ExternalUrl;
                 user.UserEmail = registeredUser.UserEmail;
@@ -199,17 +198,34 @@ namespace NetworkMonitor.Payment.Services
             await SaveRegisteredUsers(result);
             return result;
         }
-        // A Method to return the ExternalUrl from RegisteredUser list using the UserId or CustomerId.
-        public string GetExternalUrl(string userId, string customerId)
+
+        // A method that takes the paramter registerUser and adds it to the list of registerd users. Checing if it already exists first use UserId and CustomerId to match.
+        public async Task<ResultObj> UpdateCustomerID(RegisteredUser registeredUser)
         {
-            var result = "";
-            if (_registeredUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).Count() > 0)
+            var result = new ResultObj();
+            result.Message = " SERVICE : NewRegisteredUserCustomerID : ";
+            result.Success = false;
+            var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.UserEmail == registeredUser.UserEmail).FirstOrDefault();
+
+            if (user == null)
             {
-                var registeredUser = _registeredUsers.Where(w => w.UserId == userId || w.CustomerId == customerId).FirstOrDefault();
-                result = registeredUser.ExternalUrl;
+                result.Message += " Could not find user to Register CustomerId : uavailable user data was : " + registeredUser.UserId + " : " + registeredUser.UserEmail;
+
             }
+            else
+            {
+
+                user.CustomerId = registeredUser.CustomerId;
+                result.Message += " Adding New Customer Id for User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : " + registeredUser.CustomerId;
+                var saveResult = await SaveRegisteredUsers(result);
+                result.Success = saveResult.Success;
+                result.Message += saveResult.Message;
+            }
+
+
             return result;
         }
+
         public async Task<ResultObj> PaymentCheck()
         {
             var result = new ResultObj();
@@ -225,7 +241,7 @@ namespace NetworkMonitor.Payment.Services
                     }
                     else
                     {
-                        await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepos, p);
+                        await PublishRepo.UpdateUserCustomerIdAsync(_logger, _rabbitRepos, p);
                     }
                     result.Message += (" Retry " + p.RetryCount + " of Payment Transaction  for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
                     p.RetryCount++;
@@ -413,11 +429,29 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-        public async Task<ResultObj> UpdateUserSubscription(Subscription session)
+        private (UserInfo?, RegisteredUser?) GetUserFromCustomerId(string customerId)
+        {
+            var registeredUser = _registeredUsers.Where(w => w.CustomerId == customerId).FirstOrDefault();
+            if (registeredUser != null)
+            {
+                return new(new UserInfo()
+                {
+                    UserID = registeredUser.UserId,
+                    CustomerId = registeredUser.CustomerId,
+                    Email = registeredUser.UserEmail
+                }, registeredUser);
+            }
+            return (null, null);
+        }
+
+        /*public async Task<ResultObj> UpdateUserSubscription(Subscription session)
         {
             var result = new ResultObj();
             var userInfo = new UserInfo();
             int id = 0;
+
+            string externalUrl = GetExternalUrl("", userInfo.CustomerId);
+
             if (_paymentTransactions.Count > 0)
             {
                 id = _paymentTransactions.Max(m => m.Id);
@@ -434,6 +468,7 @@ namespace NetworkMonitor.Payment.Services
             result.Message = "SERVICE : UpdateUserSubscription : ";
             try
             {
+
                 SubscriptionItem item = session.Items.FirstOrDefault();
                 if (item != null)
                 {
@@ -456,9 +491,6 @@ namespace NetworkMonitor.Payment.Services
                     result.Message += " Error : Subcription Items contains no Subscription for CustomerID " + session.CustomerId;
                     _logger.LogError(" Subcription Items contains no Subscription for CustomerID " + session.CustomerId);
                 }
-                userInfo.CustomerId = session.CustomerId;
-                string externalUrl = GetExternalUrl("", userInfo.CustomerId);
-
 
                 paymentTransaction.ExternalUrl = externalUrl;
                 if (userInfo.CustomerId != null)
@@ -486,7 +518,6 @@ namespace NetworkMonitor.Payment.Services
 
                 }
 
-
                 _logger.LogInformation(result.Message);
             }
             catch (Exception e)
@@ -503,18 +534,53 @@ namespace NetworkMonitor.Payment.Services
                 result.Message += await SaveTransactions();
             }
             return result;
-        }
+        }*/
 
-
-        public async Task<ResultObj> CreateUserSubscription(Stripe.Checkout.Session session)
+        public async Task<ResultObj> UpdateUserSubscription(Subscription session)
         {
             var result = new ResultObj();
-            var userInfo = new UserInfo();
+            result.Success = false;
+            result.Message = " Started UpdateUserSubscription ";
+            var customerId = session.CustomerId;
+
+
+
+            var userObj = GetUserFromCustomerId(customerId);
+            var userInfo = userObj.Item1;
+            var registeredUser = userObj.Item2;
+            bool foundProduct = false;
+
+            SubscriptionItem item = session.Items.FirstOrDefault();
+            if (item != null)
+            {
+                ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
+                if (paymentObj != null)
+                {
+                    userInfo.AccountType = paymentObj.ProductName;
+                    userInfo.HostLimit = paymentObj.HostLimit;
+                    userInfo.CancelAt = session.CancelAt;
+                    result.Message += " Success : Changed CustomerID " + session.CustomerId + " Subsciption Product to " + paymentObj.ProductName;
+                    foundProduct = true;
+                }
+                else
+                {
+                    result.Message += " Error : Failed to find Product with PriceID " + item.Price.Id;
+                    _logger.LogError(" Failed to find Product with PriceID " + item.Price.Id);
+                }
+            }
+            else
+            {
+                result.Message += " Error : Subcription Items contains no Subscription for CustomerID " + session.CustomerId;
+                _logger.LogError(" Subcription Items contains no Subscription for CustomerID " + session.CustomerId);
+            }
+
             int id = 0;
+
             if (_paymentTransactions.Count > 0)
             {
                 id = _paymentTransactions.Max(m => m.Id);
             }
+            if (registeredUser == null || userInfo == null) return result;
             var paymentTransaction = new PaymentTransaction()
             {
                 Id = id + 1,
@@ -523,47 +589,34 @@ namespace NetworkMonitor.Payment.Services
                 IsUpdate = false,
                 IsComplete = false,
                 Result = result,
+                ExternalUrl = registeredUser.ExternalUrl
             };
-            result.Message = "SERVICE : CreateUserSubscription : ";
+            result.Message = "SERVICE : UpdateUserSubscription : ";
             try
             {
-                if (_sessionList.ContainsKey(session.Id))
+                if (userInfo.UserID != null && foundProduct)
                 {
-                    // If the session.Id exists in the dictionary, retrieve its associated value.
-                    userInfo.UserID = _sessionList[session.Id];
-                }
-                else
-                {
-                    string newUserID = session.ClientReferenceId;
-                    _sessionList[session.Id] = newUserID;
-                    userInfo.UserID = newUserID;
-                }
-                userInfo.CustomerId = session.CustomerId;
-                userInfo.Email = session.CustomerEmail;
-                string externalUrl = GetExternalUrl(userInfo.UserID, userInfo.CustomerId);
-                var RegisteredUser = new RegisteredUser()
-                {
-                    CustomerId = userInfo.CustomerId,
-                    UserId = userInfo.UserID,
-                    UserEmail = userInfo.Email,
-                    ExternalUrl = externalUrl
-                };
-                await RegisterUser(RegisteredUser);
-                paymentTransaction.ExternalUrl = externalUrl;
-                if (userInfo.UserID != null)
-                {
-                    paymentTransaction.UserInfo = userInfo;
-                    await PublishRepo.CreateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
-                    result.Message += "Success : Published event CreateUserSubscription";
+                    await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
+                    result.Message += "Success : Published event UpdateUserSubscription";
                     result.Success = true;
+                    _logger.LogInformation(result.Message);
                 }
                 else
                 {
-                    result.Message += "Error : failed to find user with sessionId = " + session.Id;
+                    if (userInfo.UserID == null)
+                    {
+                        result.Message += " Error : Did not send UpdateUserSubscriptoin userId is null. ";
+
+                    }
+                    if (!foundProduct)
+                    {
+                        result.Message += " Error : Did not send UpdateUserSubscriptoin product not found. ";
+
+                    }
                     result.Success = false;
                     _logger.LogError(result.Message);
                 }
-                _logger.LogInformation(result.Message);
+
             }
             catch (Exception e)
             {
@@ -573,7 +626,65 @@ namespace NetworkMonitor.Payment.Services
             }
             finally
             {
-                paymentTransaction.UserInfo = userInfo;
+                paymentTransaction.Result = result;
+                _paymentTransactions.Add(paymentTransaction);
+                result.Message += SaveTransactions();
+            }
+            return result;
+        }
+
+        public async Task<ResultObj> UpdateUserCustomerId(string customerId)
+        {
+            var result = new ResultObj();
+            result.Success = false;
+            result.Message = " Started UpdateUserCustomerId ";
+
+            var userObj = GetUserFromCustomerId(customerId);
+            var userInfo = userObj.Item1;
+            var registeredUser = userObj.Item2;
+            int id = 0;
+
+            if (_paymentTransactions.Count > 0)
+            {
+                id = _paymentTransactions.Max(m => m.Id);
+            }
+            if (registeredUser == null || userInfo == null) return result;
+            var paymentTransaction = new PaymentTransaction()
+            {
+                Id = id + 1,
+                EventDate = DateTime.UtcNow,
+                UserInfo = userInfo,
+                IsUpdate = false,
+                IsComplete = false,
+                Result = result,
+                ExternalUrl = registeredUser.ExternalUrl
+            };
+            try
+            {
+
+                if (userInfo.UserID != null)
+                {
+                    await PublishRepo.UpdateUserCustomerIdAsync(_logger, _rabbitRepos, paymentTransaction);
+                    result.Message += "Success : Published event UpdateUserCustomerId";
+                    result.Success = true;
+                    _logger.LogInformation(result.Message);
+                }
+                else
+                {
+                    result.Message += " Error : UserID was null ";
+                    result.Success = false;
+                    _logger.LogError(result.Message);
+                }
+
+            }
+            catch (Exception e)
+            {
+                result.Message += "Error : failed publish UpdateUserCustomerId . Error was : " + e.Message;
+                _logger.LogError("Error : failed publish UpdateUserCustomerId . Error was : " + e.ToString());
+                result.Success = false;
+            }
+            finally
+            {
                 paymentTransaction.Result = result;
                 _paymentTransactions.Add(paymentTransaction);
                 result.Message += SaveTransactions();
