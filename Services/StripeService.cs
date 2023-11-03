@@ -38,7 +38,7 @@ namespace NetworkMonitor.Payment.Services
     {
         CancellationToken _token;
         private Dictionary<string, string> _sessionList = new Dictionary<string, string>();
-        private ConcurrentBag<PaymentTransaction> _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
+        private List<PaymentTransaction> _paymentTransactions = new List<PaymentTransaction>();
         private List<IRabbitRepo> _rabbitRepos = new List<IRabbitRepo>();
         private ILogger _logger;
         private IFileRepo _fileRepo;
@@ -72,11 +72,11 @@ namespace NetworkMonitor.Payment.Services
                 if (paymentTransactionsList == null)
                 {
                     _logger.LogWarning(" PaymentTransactions data is null. ");
-                    _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
+                    _paymentTransactions = new List<PaymentTransaction>();
                 }
                 else
                 {
-                    _paymentTransactions = new ConcurrentBag<PaymentTransaction>(paymentTransactionsList);
+                    _paymentTransactions = new List<PaymentTransaction>(paymentTransactionsList);
                 }
 
                 var registeredUsersList = await _fileRepo.GetStateJsonAsync<List<RegisteredUser>>("RegisteredUsers");
@@ -112,7 +112,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 if (_paymentTransactions == null)
                 {
-                    _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
+                    _paymentTransactions = new List<PaymentTransaction>();
                     result.Message += " Failed to load PaymentTransactions from State. Setting new ConcurrentBag<PaymentTransaction>() ";
                 }
                 if (_registeredUsers == null)
@@ -151,7 +151,7 @@ namespace NetworkMonitor.Payment.Services
             }
             if (_paymentTransactions == null)
             {
-                _paymentTransactions = new ConcurrentBag<PaymentTransaction>();
+                _paymentTransactions = new List<PaymentTransaction>();
             }
             /*if (_paymentTransactions.Count == 0)
             {
@@ -243,15 +243,15 @@ namespace NetworkMonitor.Payment.Services
             else
             {
 
-                user.CustomerId = "";
+                //user.CustomerId = "";
                 result.Message += " Deleting Customer Id for User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : " + registeredUser.CustomerId;
-                var saveResult = await SaveRegisteredUsers(result);
+                //var saveResult = await SaveRegisteredUsers(result);
 
-                result.Message += saveResult.Message;
+                //result.Message += saveResult.Message;
                 // Send Blank customerId to Monitor Service. 
                 var updateResult = await UpdateUserCustomerId(registeredUser.CustomerId, eventId, true);
                 result.Message += updateResult.Message;
-                 result.Success = saveResult.Success && updateResult.Success ;
+                result.Success = updateResult.Success;
 
             }
             //result.Success=true;
@@ -275,7 +275,7 @@ namespace NetworkMonitor.Payment.Services
                     {
                         await PublishRepo.UpdateUserCustomerIdAsync(_logger, _rabbitRepos, p);
                     }
-                    result.Message += (" Retry " + p.RetryCount + " of Payment Transaction  for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
+                    result.Message += " Retry " + p.RetryCount + " of Payment Transaction  for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ";
                     p.RetryCount++;
                     if (p.RetryCount > 5)
                     {
@@ -319,13 +319,13 @@ namespace NetworkMonitor.Payment.Services
             var result = new ResultObj();
             try
             {
-                await _fileRepo.SaveStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions.ToList());
+                await _fileRepo.SaveStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
                 result.Message = " Save Transactions Completed ";
                 result.Success = true;
             }
             catch (Exception e)
             {
-                result.Message = " Failed to Save Transactions. Error was : " + e.ToString();
+                result.Message = " Failed to Save Transactions. Error was : " + e.Message;
                 result.Success = false;
                 _logger.LogError(result.Message);
             }
@@ -347,6 +347,7 @@ namespace NetworkMonitor.Payment.Services
                         return result;
                     }
                     updatePaymentTransaction.Result = paymentTransaction.Result;
+                     updatePaymentTransaction.IsUpdate = paymentTransaction.IsUpdate;
                     if (paymentTransaction.Result.Success)
                     {
                         updatePaymentTransaction.IsComplete = true;
@@ -355,8 +356,11 @@ namespace NetworkMonitor.Payment.Services
                         result.Message += " Payment Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate + " : Result : " + paymentTransaction.Result.Message;
                         try
                         {
-                            await PublishRepo.UpdateUserPingInfosAsync(_logger, _rabbitRepos, updatePaymentTransaction);
-                            result.Message += " Success : Published event UpdateUserPingInfos ";
+                            if (updatePaymentTransaction.IsUpdate)
+                            {
+                                await PublishRepo.UpdateUserPingInfosAsync(_logger, _rabbitRepos, updatePaymentTransaction);
+                                result.Message += " Success : Published event UpdateUserPingInfos ";
+                            }
                             result.Success = true;
 
                         }
@@ -492,7 +496,7 @@ namespace NetworkMonitor.Payment.Services
             var items = session.Items;
             if (items == null) return result;
             SubscriptionItem? item = items.FirstOrDefault();
-           
+
             if (item != null)
             {
                 ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
@@ -528,19 +532,18 @@ namespace NetworkMonitor.Payment.Services
                 Id = id + 1,
                 EventDate = DateTime.UtcNow,
                 UserInfo = userInfo,
-                IsUpdate = false,
+                IsUpdate = true,
                 IsComplete = false,
                 Result = result,
                 ExternalUrl = registeredUser.ExternalUrl,
                 EventId = eventId
             };
-            result.Message = "SERVICE : UpdateUserSubscription : ";
             try
             {
                 if (userInfo.UserID != null && foundProduct)
                 {
                     await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
-                    result.Message += "Success : Published event UpdateUserSubscription";
+                    result.Message += " Success : Published event UpdateUserSubscription ";
                     result.Success = true;
                     _logger.LogInformation(result.Message);
                 }
@@ -647,22 +650,19 @@ namespace NetworkMonitor.Payment.Services
             var userInfo = userObj.Item1;
             var registeredUser = userObj.Item2;
             if (registeredUser == null || userInfo == null) return result;
-            SubscriptionItem item = new SubscriptionItem();
 
-            item.Price.Id = "price_free";
-            ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
+            ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == "price_free").FirstOrDefault();
             if (paymentObj != null)
             {
                 userInfo.AccountType = paymentObj.ProductName;
                 userInfo.HostLimit = paymentObj.HostLimit;
                 userInfo.CancelAt = DateTime.UtcNow;
                 result.Message += " Success : Changed CustomerID " + customerId + " Subsciption Product to " + paymentObj.ProductName;
-
             }
             else
             {
-                result.Message += " Error : Failed to find Product with PriceID " + item.Price.Id;
-                _logger.LogError(" Failed to find Product with PriceID " + item.Price.Id);
+                result.Message += " Error : Failed to find Product with PriceID price_free";
+                _logger.LogError(result.Message);
             }
 
             int id = 0;
@@ -677,7 +677,7 @@ namespace NetworkMonitor.Payment.Services
                 Id = id + 1,
                 EventDate = DateTime.UtcNow,
                 UserInfo = userInfo,
-                IsUpdate = false,
+                IsUpdate = true,
                 IsComplete = false,
                 Result = result,
                 ExternalUrl = registeredUser.ExternalUrl,

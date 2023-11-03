@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;   
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,21 +36,16 @@ namespace NetworkMonitor.Payment
                {
                    builder.AddConsole();
                });
-            StripeConfiguration.AppInfo = new AppInfo
-            {
-                Name = "stripe-samples/checkout-single-subscription",
-                Url = "https://github.com/stripe-samples/checkout-single-subscription",
-                Version = "0.0.1",
-            };
+            
             services.Configure<PaymentOptions>(options =>
             {
                 options.StripePublishableKey = _config["StripePublishableKey"] ?? throw new ArgumentNullException("StripePublishableKey");
                 options.StripeSecretKey = _config["StripeSecretKey"] ?? throw new ArgumentNullException("StripeSecretKey");
                 options.StripeWebhookSecret = _config["StripeWebhookSecret"] ?? throw new ArgumentNullException("StripeWebhookSecret");
                 options.StripeDomain = _config["Domain"] ?? throw new ArgumentNullException("Domain");
-               options.SystemUrls = _config.GetSection("SystemUrls").Get<List<SystemUrl>>() ?? throw new ArgumentNullException("SystemParams.SystemUrls");
-               options.LocalSystemUrl = _config.GetSection("LocalSystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("LocalSystemUrl");
-               
+                options.SystemUrls = _config.GetSection("SystemUrls").Get<List<SystemUrl>>() ?? throw new ArgumentNullException("SystemParams.SystemUrls");
+                options.LocalSystemUrl = _config.GetSection("LocalSystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("LocalSystemUrl");
+
                 options.LoadServer = _config.GetValue<string>("LoadServer") ?? throw new ArgumentNullException("LoadServer");
                 options.StripeProducts = new List<ProductObj>();
                 _config.GetSection("Products").Bind(options.StripeProducts);
@@ -76,13 +70,9 @@ namespace NetworkMonitor.Payment
                         return Task.CompletedTask;
                     });
 
-            services.AddControllersWithViews().AddNewtonsoftJson(options =>
-            {
-                options.SerializerSettings.ContractResolver = new DefaultContractResolver
-                {
-                    NamingStrategy = new SnakeCaseNamingStrategy(),
-                };
-            });
+            services.AddControllers();
+
+
         }
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime appLifetime)
@@ -95,23 +85,14 @@ namespace NetworkMonitor.Payment
             {
                 app.UseDeveloperExceptionPage();
             }
-            else
-            {
-                app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
-            }
+           
             app.UseCors("AllowAnyOrigin");
             //app.UseHttpsRedirection();
-            app.UseFileServer();
             app.UseRouting();
-            app.UseAuthorization();
             app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllerRoute(
-                    name: "default",
-                    pattern: "{controller=Home}/{action=Index}/{id?}");
-            });
+         {
+             endpoints.MapControllers();
+         });
         }
     }
 }
