@@ -30,6 +30,7 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> DeleteCustomerID(RegisteredUser registeredUser, string eventId);
         Task<ResultObj> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false);
         Task<ResultObj> UpdateUserSubscription(Subscription session, string eventId);
+        Task<ResultObj> DeleteUserSubscription(string customerId, string eventId);
         Task Init();
         ConcurrentBag<RegisteredUser> RegisteredUsers { get; }
     }
@@ -250,10 +251,7 @@ namespace NetworkMonitor.Payment.Services
                 // Send Blank customerId to Monitor Service. 
                 var updateResult = await UpdateUserCustomerId(registeredUser.CustomerId, eventId, true);
                 result.Message += updateResult.Message;
-                // Reset user back to Free Account
-                var deleteResult = await DeleteUserSubscription(registeredUser.CustomerId, eventId);
-                result.Message += deleteResult.Message;
-                result.Success = saveResult.Success && updateResult.Success && deleteResult.Success;
+                 result.Success = saveResult.Success && updateResult.Success ;
 
             }
             //result.Success=true;

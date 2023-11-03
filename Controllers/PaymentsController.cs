@@ -243,6 +243,9 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
+
+             
+                
             if (stripeEvent.Type == Events.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
@@ -264,13 +267,32 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
+
+           
+            if (stripeEvent.Type == Events.CustomerSubscriptionDeleted)
+            {
+                var session = stripeEvent.Data.Object as Subscription;
+
+                if (session == null || session.CustomerId == null)
+                {
+                    _logger.LogError("Error : stripeEvent CustomerSubscriptionDeleted contains no CustomerId .");
+                }
+                else
+                {
+                    _logger.LogInformation($" Deleting customer subcription for customerId: {session.Customer}");
+                    result = await _stripeService.DeleteUserSubscription(session.CustomerId, stripeEvent.Id);
+               
+                }
+
+            }
+           
             if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
                 if (session == null || session.CustomerId == null)
                 {
-                    _logger.LogError("Error : stripeEvent CustomerSubscriptionCreated contains CustomerId .");
+                    _logger.LogError("Error : stripeEvent CustomerSubscriptionCreated contains no CustomerId .");
                 }
                 else
                 {
