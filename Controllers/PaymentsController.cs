@@ -243,9 +243,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
-
-             
-                
+               
             if (stripeEvent.Type == Events.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
