@@ -256,7 +256,7 @@ namespace NetworkMonitor.Payment.Services
                 result.Success = saveResult.Success && updateResult.Success && deleteResult.Success;
 
             }
-
+            //result.Success=true;
             return result;
         }
 
