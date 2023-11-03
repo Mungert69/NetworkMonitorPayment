@@ -107,9 +107,23 @@ namespace NetworkMonitor.Payment.Controllers
         [HttpGet("checkout-session")]
         public async Task<IActionResult> CheckoutSession(string sessionId)
         {
-            var service = new SessionService(this.client);
-            var session = await service.GetAsync(sessionId);
-            return Ok(session);
+            try
+            {
+                var service = new SessionService(this.client);
+                var session = await service.GetAsync(sessionId);
+                return Ok(session);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = e.Message,
+                    }
+                });
+            }
+
         }
         [HttpGet("customer-portal/{customerId}")]
         public async Task<IActionResult> CustomerPortal([FromRoute] string customerId)
@@ -174,54 +188,86 @@ namespace NetworkMonitor.Payment.Controllers
                     Request.Headers["Stripe-Signature"],
                     this.options.Value.StripeWebhookSecret
                 );
-                Console.WriteLine($"Webhook notification with type: {stripeEvent.Type} found for {stripeEvent.Id}");
+                _logger.LogInformation($" Webhook notification with type: {stripeEvent.Type} found for {stripeEvent.Id}");
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Something failed {e}");
-                return BadRequest();
+                _logger.LogError(" Error : Constructing StripeEvent . Error was : "+e.Message);
+               return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = e.Message,
+                    }
+                });
             }
+            var result = new ResultObj();
+            result.Success = false;
             if (stripeEvent.Type == Events.CustomerCreated)
             {
-                var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
+                var session = stripeEvent.Data.Object as Stripe.Customer;
+
                 if (session != null)
                 {
-                    var registeredUser=new RegisteredUser(){
-                        UserEmail=session.CustomerEmail,
-                        CustomerId=session.CustomerId,
-                        UserId=session.ClientReferenceId
+                    var registeredUser = new RegisteredUser()
+                    {
+                        UserEmail = session.Email,
+                        CustomerId = session.Id,
                     };
-                    await _stripeService.UpdateCustomerID(registeredUser);
-                    _logger.LogInformation($" Created customer  for UserId {_stripeService.SessionList[session.Id]} .");
+                    result = await _stripeService.UpdateCustomerID(registeredUser);
+                    _logger.LogInformation($" Created customer  for UserId {registeredUser.UserId} .");
                 }
                 else
                 {
                     _logger.LogError("Error : stripeEvent CustomerCreated contains no Session object .");
                 }
+
+            }
+            if (stripeEvent.Type == Events.CustomerDeleted)
+            {
+                var session = stripeEvent.Data.Object as Stripe.Customer;
+
+                if (session != null)
+                {
+                    var registeredUser = new RegisteredUser()
+                    {
+                        UserEmail = session.Email,
+                        CustomerId = session.Id,
+                    };
+                    result = await _stripeService.DeleteCustomerID(registeredUser, stripeEvent.Id);
+                    _logger.LogInformation($" Deleted customer  for UserId {registeredUser.UserId} .");
+                }
+                else
+                {
+                    _logger.LogError("Error : stripeEvent CustomerCreated contains no Session object .");
+                }
+
             }
             if (stripeEvent.Type == Events.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                if (session != null )
+
+                if (session != null)
                 {
-                    var registeredUser=new RegisteredUser(){
-                        UserEmail=session.CustomerEmail,
-                        CustomerId=session.CustomerId,
-                        UserId=session.ClientReferenceId
+                    var registeredUser = new RegisteredUser()
+                    {
+                        UserEmail = session.CustomerEmail,
+                        CustomerId = session.CustomerId,
+                        UserId = session.ClientReferenceId
                     };
-                    await _stripeService.UpdateCustomerID(registeredUser);
-                    _logger.LogInformation($" Created customer  for UserId {_stripeService.SessionList[session.Id]} .");
+                    result = await _stripeService.UpdateCustomerID(registeredUser);
+                    _logger.LogInformation($" Checkout session complete  for UserId {registeredUser.UserId} .");
                 }
                 else
                 {
                     _logger.LogError("Error : stripeEvent CustomerCreated contains no Session object .");
                 }
+
             }
             if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
-                var result = new ResultObj();
-                result.Success = false;
+
                 if (session == null || session.CustomerId == null)
                 {
                     _logger.LogError("Error : stripeEvent CustomerSubscriptionCreated contains CustomerId .");
@@ -229,29 +275,15 @@ namespace NetworkMonitor.Payment.Controllers
                 else
                 {
                     _logger.LogInformation($"Creating customer subcription for customerId: {session.Customer}");
-                    result = await _stripeService.UpdateUserCustomerId(session.CustomerId);
+                    result = await _stripeService.UpdateUserCustomerId(session.CustomerId, stripeEvent.Id);
 
                 }
-                if (result.Success)
-                {
-                    return Ok();
-                }
-                else
-                {
-                    return BadRequest(new ErrorResponse
-                    {
-                        ErrorMessage = new ErrorMessage
-                        {
-                            Message = result.Message,
-                        }
-                    });
-                }
+
             }
             if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
-                var result = new ResultObj();
-                result.Success = false;
+
                 if (session == null || session.CustomerId == null)
                 {
                     _logger.LogError("Error : stripeEvent CustomerSubscriptionUpdated contains no customerId .");
@@ -260,25 +292,27 @@ namespace NetworkMonitor.Payment.Controllers
                 {
                     _logger.LogInformation($"Updating customer subcription for customerId: {session.Customer}");
 
-                    result = await _stripeService.UpdateUserSubscription(session);
+                    result = await _stripeService.UpdateUserSubscription(session,stripeEvent.Id);
 
                 }
-                if (result.Success)
-                {
-                    return Ok();
-                }
-                else
-                {
-                    return BadRequest(new ErrorResponse
-                    {
-                        ErrorMessage = new ErrorMessage
-                        {
-                            Message = result.Message,
-                        }
-                    });
-                }
+
             }
-            return Ok();
+            if (result.Success)
+            {
+                _logger.LogInformation(result.Message);
+                return Ok();
+            }
+            else
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorMessage = new ErrorMessage
+                    {
+                        Message = result.Message,
+                    }
+                });
+            }
+  
         }
     }
 }

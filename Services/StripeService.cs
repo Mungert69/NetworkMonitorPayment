@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Stripe;
 using Stripe.Checkout;
+using Org.BouncyCastle.Crypto.Digests;
 
 namespace NetworkMonitor.Payment.Services
 {
@@ -26,8 +27,9 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction);
         Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser);
         Task<ResultObj> UpdateCustomerID(RegisteredUser registeredUser);
-        Task<ResultObj> UpdateUserCustomerId(string customerId);
-        Task<ResultObj> UpdateUserSubscription(Subscription session);
+        Task<ResultObj> DeleteCustomerID(RegisteredUser registeredUser, string eventId);
+        Task<ResultObj> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false);
+        Task<ResultObj> UpdateUserSubscription(Subscription session, string eventId);
         Task Init();
         ConcurrentBag<RegisteredUser> RegisteredUsers { get; }
     }
@@ -203,25 +205,57 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> UpdateCustomerID(RegisteredUser registeredUser)
         {
             var result = new ResultObj();
-            result.Message = " SERVICE : NewRegisteredUserCustomerID : ";
+            result.Message = " SERVICE : UpdateCustomerID : ";
             result.Success = false;
             var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.UserEmail == registeredUser.UserEmail).FirstOrDefault();
 
             if (user == null)
             {
-                result.Message += " Could not find user to Register CustomerId : uavailable user data was : " + registeredUser.UserId + " : " + registeredUser.UserEmail;
+                result.Message += " Could not find user to update CustomerId : available user data was : " + registeredUser.UserId + " : " + registeredUser.UserEmail;
 
             }
             else
             {
 
                 user.CustomerId = registeredUser.CustomerId;
-                result.Message += " Adding New Customer Id for User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : " + registeredUser.CustomerId;
+                result.Message += " Updating Customer Id for User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : " + registeredUser.CustomerId;
                 var saveResult = await SaveRegisteredUsers(result);
                 result.Success = saveResult.Success;
                 result.Message += saveResult.Message;
             }
 
+            return result;
+        }
+
+        public async Task<ResultObj> DeleteCustomerID(RegisteredUser registeredUser, string eventId)
+        {
+            var result = new ResultObj();
+            result.Message = " SERVICE : DeleteCustomerID : ";
+            result.Success = false;
+            var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.UserEmail == registeredUser.UserEmail).FirstOrDefault();
+
+            if (user == null)
+            {
+                result.Message += " Could not find user to delete CustomerId : available user data was : " + registeredUser.UserId + " : " + registeredUser.UserEmail;
+
+            }
+            else
+            {
+
+                user.CustomerId = "";
+                result.Message += " Deleting Customer Id for User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : " + registeredUser.CustomerId;
+                var saveResult = await SaveRegisteredUsers(result);
+
+                result.Message += saveResult.Message;
+                // Send Blank customerId to Monitor Service. 
+                var updateResult = await UpdateUserCustomerId(registeredUser.CustomerId, eventId, true);
+                result.Message += updateResult.Message;
+                // Reset user back to Free Account
+                var deleteResult = await DeleteUserSubscription(registeredUser.CustomerId, eventId);
+                result.Message += deleteResult.Message;
+                result.Success = saveResult.Success && updateResult.Success && deleteResult.Success;
+
+            }
 
             return result;
         }
@@ -444,113 +478,23 @@ namespace NetworkMonitor.Payment.Services
             return (null, null);
         }
 
-        /*public async Task<ResultObj> UpdateUserSubscription(Subscription session)
-        {
-            var result = new ResultObj();
-            var userInfo = new UserInfo();
-            int id = 0;
-
-            string externalUrl = GetExternalUrl("", userInfo.CustomerId);
-
-            if (_paymentTransactions.Count > 0)
-            {
-                id = _paymentTransactions.Max(m => m.Id);
-            }
-            var paymentTransaction = new PaymentTransaction()
-            {
-                Id = id + 1,
-                EventDate = DateTime.UtcNow,
-                UserInfo = userInfo,
-                IsUpdate = true,
-                IsComplete = false,
-                Result = result
-            };
-            result.Message = "SERVICE : UpdateUserSubscription : ";
-            try
-            {
-
-                SubscriptionItem item = session.Items.FirstOrDefault();
-                if (item != null)
-                {
-                    ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
-                    if (paymentObj != null)
-                    {
-                        userInfo.AccountType = paymentObj.ProductName;
-                        userInfo.HostLimit = paymentObj.HostLimit;
-                        userInfo.CancelAt = session.CancelAt;
-                        result.Message += " Success : Changed CustomerID " + session.CustomerId + " Subsciption Product to " + paymentObj.ProductName;
-                    }
-                    else
-                    {
-                        result.Message += " Error : Failed to find Product with PriceID " + item.Price.Id;
-                        _logger.LogError(" Failed to find Product with PriceID " + item.Price.Id);
-                    }
-                }
-                else
-                {
-                    result.Message += " Error : Subcription Items contains no Subscription for CustomerID " + session.CustomerId;
-                    _logger.LogError(" Subcription Items contains no Subscription for CustomerID " + session.CustomerId);
-                }
-
-                paymentTransaction.ExternalUrl = externalUrl;
-                if (userInfo.CustomerId != null)
-                {
-                    if (externalUrl == "")
-                    {
-                        result.Message += " Error : Can not find ExternalUrl for  CustomerID " + session.CustomerId;
-                        _logger.LogError("  Error : Can not find ExternalUrl for CustomerID " + session.CustomerId);
-                        result.Success = false;
-                    }
-                    else
-                    {
-                        paymentTransaction.UserInfo = userInfo;
-                        await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
-                        result.Message += " Success : Published event UpdateUserSubscription ";
-                        result.Success = true;
-                    }
-
-                }
-                else
-                {
-                    result.Message += " Error : failed update customer with sessionId = " + session.Id + " CustomerId is null .";
-                    result.Success = false;
-                    _logger.LogError("  Error : Can not find ExternalUrl for CustomerID " + session.CustomerId);
-
-                }
-
-                _logger.LogInformation(result.Message);
-            }
-            catch (Exception e)
-            {
-                result.Message += "Error : failed publish UpdateUserSubscription . Error was : " + e.Message;
-                _logger.LogError("Error : failed publish UpdateUserSubscription . Error was : " + e.ToString());
-                result.Success = false;
-            }
-            finally
-            {
-                paymentTransaction.UserInfo = userInfo;
-                paymentTransaction.Result = result;
-                _paymentTransactions.Add(paymentTransaction);
-                result.Message += await SaveTransactions();
-            }
-            return result;
-        }*/
-
-        public async Task<ResultObj> UpdateUserSubscription(Subscription session)
+        public async Task<ResultObj> UpdateUserSubscription(Subscription session, string eventId)
         {
             var result = new ResultObj();
             result.Success = false;
             result.Message = " Started UpdateUserSubscription ";
             var customerId = session.CustomerId;
 
-
-
             var userObj = GetUserFromCustomerId(customerId);
             var userInfo = userObj.Item1;
             var registeredUser = userObj.Item2;
+            if (registeredUser == null || userInfo == null) return result;
+            if (session == null) return result;
             bool foundProduct = false;
-
-            SubscriptionItem item = session.Items.FirstOrDefault();
+            var items = session.Items;
+            if (items == null) return result;
+            SubscriptionItem? item = items.FirstOrDefault();
+           
             if (item != null)
             {
                 ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
@@ -580,7 +524,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 id = _paymentTransactions.Max(m => m.Id);
             }
-            if (registeredUser == null || userInfo == null) return result;
+
             var paymentTransaction = new PaymentTransaction()
             {
                 Id = id + 1,
@@ -589,7 +533,8 @@ namespace NetworkMonitor.Payment.Services
                 IsUpdate = false,
                 IsComplete = false,
                 Result = result,
-                ExternalUrl = registeredUser.ExternalUrl
+                ExternalUrl = registeredUser.ExternalUrl,
+                EventId = eventId
             };
             result.Message = "SERVICE : UpdateUserSubscription : ";
             try
@@ -633,7 +578,7 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-        public async Task<ResultObj> UpdateUserCustomerId(string customerId)
+        public async Task<ResultObj> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false)
         {
             var result = new ResultObj();
             result.Success = false;
@@ -649,6 +594,7 @@ namespace NetworkMonitor.Payment.Services
                 id = _paymentTransactions.Max(m => m.Id);
             }
             if (registeredUser == null || userInfo == null) return result;
+            if (blankCustomerId) userInfo.CustomerId = "";
             var paymentTransaction = new PaymentTransaction()
             {
                 Id = id + 1,
@@ -657,7 +603,8 @@ namespace NetworkMonitor.Payment.Services
                 IsUpdate = false,
                 IsComplete = false,
                 Result = result,
-                ExternalUrl = registeredUser.ExternalUrl
+                ExternalUrl = registeredUser.ExternalUrl,
+                EventId = eventId
             };
             try
             {
@@ -691,6 +638,87 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
+
+        public async Task<ResultObj> DeleteUserSubscription(string customerId, string eventId)
+        {
+            var result = new ResultObj();
+            result.Success = false;
+            result.Message = " Started DeleteUserSubscription ";
+
+            var userObj = GetUserFromCustomerId(customerId);
+            var userInfo = userObj.Item1;
+            var registeredUser = userObj.Item2;
+            if (registeredUser == null || userInfo == null) return result;
+            SubscriptionItem item = new SubscriptionItem();
+
+            item.Price.Id = "price_free";
+            ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == item.Price.Id).FirstOrDefault();
+            if (paymentObj != null)
+            {
+                userInfo.AccountType = paymentObj.ProductName;
+                userInfo.HostLimit = paymentObj.HostLimit;
+                userInfo.CancelAt = DateTime.UtcNow;
+                result.Message += " Success : Changed CustomerID " + customerId + " Subsciption Product to " + paymentObj.ProductName;
+
+            }
+            else
+            {
+                result.Message += " Error : Failed to find Product with PriceID " + item.Price.Id;
+                _logger.LogError(" Failed to find Product with PriceID " + item.Price.Id);
+            }
+
+            int id = 0;
+
+            if (_paymentTransactions.Count > 0)
+            {
+                id = _paymentTransactions.Max(m => m.Id);
+            }
+
+            var paymentTransaction = new PaymentTransaction()
+            {
+                Id = id + 1,
+                EventDate = DateTime.UtcNow,
+                UserInfo = userInfo,
+                IsUpdate = false,
+                IsComplete = false,
+                Result = result,
+                ExternalUrl = registeredUser.ExternalUrl,
+                EventId = eventId
+            };
+            try
+            {
+                if (userInfo.UserID != null)
+                {
+                    await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
+                    result.Message += "Success : Published event DeleteUserSubscription";
+                    result.Success = true;
+                    _logger.LogInformation(result.Message);
+                }
+                else
+                {
+
+                    result.Message += " Error : Did not send DeleteUserSubscription userId is null. ";
+
+                    result.Success = false;
+                    _logger.LogError(result.Message);
+                }
+
+            }
+            catch (Exception e)
+            {
+                result.Message += "Error : failed DeleteUserSubscription . Error was : " + e.Message;
+                _logger.LogError("Error : failed DeleteUserSubscription . Error was : " + e.ToString());
+                result.Success = false;
+            }
+            finally
+            {
+                paymentTransaction.Result = result;
+                _paymentTransactions.Add(paymentTransaction);
+                result.Message += SaveTransactions();
+            }
+            return result;
+        }
+
         public async Task<ResultObj> WakeUp()
         {
             var result = new ResultObj();
