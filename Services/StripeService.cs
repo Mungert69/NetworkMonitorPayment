@@ -62,7 +62,7 @@ namespace NetworkMonitor.Payment.Services
         {
 
             var result = new ResultObj();
-            result.Message = " Init Stripe Service : ";
+            result.Message = " STRIPESERVICE : Init : ";
             try
             {
                 _token.Register(() => this.Shutdown());
@@ -71,7 +71,7 @@ namespace NetworkMonitor.Payment.Services
                 var paymentTransactionsList = await _fileRepo.GetStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions");
                 if (paymentTransactionsList == null)
                 {
-                    _logger.LogWarning(" PaymentTransactions data is null. ");
+                    _logger.LogWarning(" Warning : PaymentTransactions data is null. ");
                     _paymentTransactions = new List<PaymentTransaction>();
                 }
                 else
@@ -82,7 +82,7 @@ namespace NetworkMonitor.Payment.Services
                 var registeredUsersList = await _fileRepo.GetStateJsonAsync<List<RegisteredUser>>("RegisteredUsers");
                 if (registeredUsersList == null)
                 {
-                    _logger.LogWarning(" RegisteredUsers data is null. ");
+                    _logger.LogWarning(" Warning : RegisteredUsers data is null. ");
                     _registeredUsers = new ConcurrentBag<RegisteredUser>();
                 }
                 else
@@ -92,12 +92,12 @@ namespace NetworkMonitor.Payment.Services
 
                 if (_paymentTransactions != null)
                 {
-                    result.Message += " Loaded " + _paymentTransactions.Count + " PaymentTranctions from State. ";
+                    result.Message += " Success: Loaded " + _paymentTransactions.Count + " PaymentTranctions from State. ";
                 }
 
                 if (_registeredUsers != null)
                 {
-                    result.Message += " Loaded " + _registeredUsers.Count + " RegisteredUsers from State. ";
+                    result.Message += " Success :Loaded " + _registeredUsers.Count + " RegisteredUsers from State. ";
                 }
 
                 result.Success = true;
@@ -106,19 +106,19 @@ namespace NetworkMonitor.Payment.Services
             {
 
                 result.Success = false;
-                result.Message += " Error Loading State . Error was : " + e.ToString() + " . ";
+                result.Message += " Error : Loading State . Error was : " + e.Message + " . ";
             }
             finally
             {
                 if (_paymentTransactions == null)
                 {
                     _paymentTransactions = new List<PaymentTransaction>();
-                    result.Message += " Failed to load PaymentTransactions from State. Setting new ConcurrentBag<PaymentTransaction>() ";
+                    result.Message += " Error : Failed to load PaymentTransactions from State. Setting new List<PaymentTransaction>() ";
                 }
                 if (_registeredUsers == null)
                 {
                     _registeredUsers = new ConcurrentBag<RegisteredUser>();
-                    result.Message += " Failed to load  RegisteredUsers from State. Setting new ConcurrentBag<RegisteredUser>() ";
+                    result.Message += " Error : Failed to load  RegisteredUsers from State. Setting new ConcurrentBag<RegisteredUser>() ";
                 }
             }
             try
@@ -126,13 +126,13 @@ namespace NetworkMonitor.Payment.Services
                 this.options.Value.SystemUrls.ForEach(f =>
                 {
                     ISystemParamsHelper paymentParamsHelper = new PaymentParamsHelper(f);
-                    _logger.LogInformation(" : StripeService : Init : Adding IRabbitRepo for : " + f.ExternalUrl + " : ");
+                    _logger.LogInformation(" Adding RabbitRepo for : " + f.ExternalUrl + " . ");
                     _rabbitRepos.Add(new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), paymentParamsHelper));
                 });
             }
             catch (Exception e)
             {
-                result.Message += " Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
+                result.Message += " Error : Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
                 result.Success = false;
             }
             try
@@ -146,7 +146,7 @@ namespace NetworkMonitor.Payment.Services
             }
             catch (Exception e)
             {
-                result.Message += " Could not Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
+                result.Message += " Error : Could not Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
                 result.Success = false;
             }
             if (_paymentTransactions == null)
@@ -157,7 +157,7 @@ namespace NetworkMonitor.Payment.Services
             {
                 _paymentTransactions.Add(new PaymentTransaction());
             }*/
-            result.Message += " Finished StripeService Init ";
+            result.Message += " Finished StripeService Init . ";
             result.Success = result.Success && true;
             if (result.Success)
                 _logger.LogInformation(result.Message);
@@ -182,13 +182,13 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> RegisterUser(RegisteredUser registeredUser)
         {
             var result = new ResultObj();
-            result.Message = " SERVICE : UpdateRegisteredUser : ";
+            result.Message = " STRIPESERVICE : UpdateRegisteredUser : ";
             var user = _registeredUsers.Where(w => w.UserEmail == registeredUser.UserEmail || w.UserId == registeredUser.UserId).FirstOrDefault();
 
             if (user == null)
             {
                 _registeredUsers.Add(registeredUser);
-                result.Message += " Added User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : ";
+                result.Message += " Success : Added User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " . ";
             }
             else
             {
@@ -206,13 +206,13 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> UpdateCustomerID(RegisteredUser registeredUser)
         {
             var result = new ResultObj();
-            result.Message = " SERVICE : UpdateCustomerID : ";
+            result.Message = " STRIPESERVICE : UpdateCustomerID : ";
             result.Success = false;
             var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.UserEmail == registeredUser.UserEmail).FirstOrDefault();
 
             if (user == null)
             {
-                result.Message += " Could not find user to update CustomerId : available user data was : " + registeredUser.UserId + " : " + registeredUser.UserEmail;
+                result.Message += " Error : Could not find user to update CustomerId : available user data was : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " . ";
 
             }
             else
@@ -231,20 +231,20 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> DeleteCustomerID(RegisteredUser registeredUser, string eventId)
         {
             var result = new ResultObj();
-            result.Message = " SERVICE : DeleteCustomerID : ";
+            result.Message = " STRIPESERVICE : DeleteCustomerID : ";
             result.Success = false;
             var user = _registeredUsers.Where(w => w.UserId == registeredUser.UserId || w.UserEmail == registeredUser.UserEmail).FirstOrDefault();
 
             if (user == null)
             {
-                result.Message += " Could not find user to delete CustomerId : available user data was : " + registeredUser.UserId + " : " + registeredUser.UserEmail;
+                result.Message += " Error : Could not find user to delete CustomerId : available user data was : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " . ";
 
             }
             else
             {
 
                 //user.CustomerId = "";
-                result.Message += " Deleting Customer Id for User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : " + registeredUser.CustomerId;
+                result.Message += " Deleting Customer Id for User : " + registeredUser.UserId + " : " + registeredUser.UserEmail + " : " + registeredUser.ExternalUrl + " : " + registeredUser.CustomerId + " . ";
                 //var saveResult = await SaveRegisteredUsers(result);
 
                 //result.Message += saveResult.Message;
@@ -261,6 +261,7 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> PaymentCheck()
         {
             var result = new ResultObj();
+            result.Message = " STRIPESERVICE : PaymentCheck : ";
             try
             {
                 // get a list of PaymentTransactions that are not complete and order by IsUpdate then EventDate.
@@ -275,24 +276,24 @@ namespace NetworkMonitor.Payment.Services
                     {
                         await PublishRepo.UpdateUserCustomerIdAsync(_logger, _rabbitRepos, p);
                     }
-                    result.Message += " Retry " + p.RetryCount + " of Payment Transaction  for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ";
+                    result.Message += " Warning : Retry " + p.RetryCount + " of Payment Transaction  for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ";
                     p.RetryCount++;
                     if (p.RetryCount > 5)
                     {
                         //TODO notify user of failure.
-                        _logger.LogError(" Payment Transaction Failed for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
+                        _logger.LogError(" Error : Payment Transaction Failed for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
                     }
                     await SaveTransactions();
                     Task.Delay(500).Wait();
                 });
                 await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepos, true);
-                result.Message += " Payment Transaction Queue Checked ";
+                result.Message += " Success : Payment Transaction Queue Checked . ";
                 result.Success = true;
                 //_logger.LogInformation(result.Message);
             }
             catch (Exception e)
             {
-                result.Message = " Failed to check Payment Transaction Queue . Error was : " + e.ToString();
+                result.Message += " Error : Failed to check Payment Transaction Queue . Error was : " + e.Message + " . ";
                 result.Success = false;
                 _logger.LogError(result.Message);
             }
@@ -303,12 +304,12 @@ namespace NetworkMonitor.Payment.Services
             try
             {
                 await _fileRepo.SaveStateJsonAsync<List<RegisteredUser>>("RegisteredUsers", _registeredUsers.ToList());
-                result.Message += " Save RegisteredUsers Completed ";
+                result.Message += " Success : Save RegisteredUsers Completed . ";
                 result.Success = true;
             }
             catch (Exception e)
             {
-                result.Message += " Failed to Save RegisteredUsers . Error was : " + e.ToString();
+                result.Message += " Error : Failed to Save RegisteredUsers . Error was : " + e.Message + " . ";
                 result.Success = false;
                 _logger.LogError(result.Message);
             }
@@ -320,12 +321,12 @@ namespace NetworkMonitor.Payment.Services
             try
             {
                 await _fileRepo.SaveStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions", _paymentTransactions);
-                result.Message = " Save Transactions Completed ";
+                result.Message = " Success : Save Transactions Completed . ";
                 result.Success = true;
             }
             catch (Exception e)
             {
-                result.Message = " Failed to Save Transactions. Error was : " + e.Message;
+                result.Message = " Error : Failed to Save Transactions. Error was : " + e.Message + " . ";
                 result.Success = false;
                 _logger.LogError(result.Message);
             }
@@ -334,6 +335,7 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction)
         {
             var result = new ResultObj();
+            result.Message = " STRIPESERVICE : PaymentComplete : ";
             try
             {
                 var updatePaymentTransaction = _paymentTransactions.Where(w => w.Id == paymentTransaction.Id).FirstOrDefault();
@@ -347,13 +349,13 @@ namespace NetworkMonitor.Payment.Services
                         return result;
                     }
                     updatePaymentTransaction.Result = paymentTransaction.Result;
-                     updatePaymentTransaction.IsUpdate = paymentTransaction.IsUpdate;
+                    updatePaymentTransaction.IsUpdate = paymentTransaction.IsUpdate;
                     if (paymentTransaction.Result.Success)
                     {
                         updatePaymentTransaction.IsComplete = true;
                         updatePaymentTransaction.CompletedDate = DateTime.Now;
                         // log the payment transaction to result.Message. Showing Created or Updatee, UserInfo, ID and the EventDate.
-                        result.Message += " Payment Complete => Payment Transaction for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate + " : Result : " + paymentTransaction.Result.Message;
+                        result.Message += " Transaction  complete for Customer " + paymentTransaction.UserInfo.CustomerId + " : " + (paymentTransaction.IsUpdate ? "Updated" : "Created") + " : " + paymentTransaction.UserInfo.UserID + " : " + paymentTransaction.Id + " : " + paymentTransaction.EventDate + " : Result : " + paymentTransaction.Result.Message;
                         try
                         {
                             if (updatePaymentTransaction.IsUpdate)
@@ -410,6 +412,7 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction)
         {
             var result = new ResultObj();
+            result.Message = " STRIPESERVICE : PingInfosComplete : ";
             try
             {
                 var updatePaymentTransaction = _paymentTransactions.Where(w => w.Id == paymentTransaction.Id).FirstOrDefault();
@@ -484,7 +487,7 @@ namespace NetworkMonitor.Payment.Services
         {
             var result = new ResultObj();
             result.Success = false;
-            result.Message = " Started UpdateUserSubscription ";
+            result.Message = " STRIPESERVICE : UpdateUserSubscription : ";
             var customerId = session.CustomerId;
 
             var userObj = GetUserFromCustomerId(customerId);
@@ -522,22 +525,36 @@ namespace NetworkMonitor.Payment.Services
 
             int id = 0;
 
-            if (_paymentTransactions.Count > 0)
+            var paymentTransaction = _paymentTransactions.Where(w => w.EventId == eventId).FirstOrDefault();
+            if (paymentTransaction == null)
             {
                 id = _paymentTransactions.Max(m => m.Id);
+                paymentTransaction = new PaymentTransaction()
+                {
+                    Id = id + 1,
+                    EventDate = DateTime.UtcNow,
+                    IsUpdate = true,
+                    IsComplete = false,
+                    Result = result,
+                    EventId = eventId
+                };
+                _paymentTransactions.Add(paymentTransaction);
             }
-
-            var paymentTransaction = new PaymentTransaction()
+            else
             {
-                Id = id + 1,
-                EventDate = DateTime.UtcNow,
-                UserInfo = userInfo,
-                IsUpdate = true,
-                IsComplete = false,
-                Result = result,
-                ExternalUrl = registeredUser.ExternalUrl,
-                EventId = eventId
-            };
+                if (paymentTransaction.IsComplete)
+                {
+                    result.Success = true;
+                    result.Message += " PaymentTransction already complete . Webhook was called again. ";
+                    return result;
+                }
+
+            }
+            paymentTransaction.UserInfo = userInfo;
+            paymentTransaction.ExternalUrl = registeredUser.ExternalUrl;
+
+
+
             try
             {
                 if (userInfo.UserID != null && foundProduct)
@@ -573,7 +590,7 @@ namespace NetworkMonitor.Payment.Services
             finally
             {
                 paymentTransaction.Result = result;
-                _paymentTransactions.Add(paymentTransaction);
+                //_paymentTransactions.Add(paymentTransaction);
                 result.Message += SaveTransactions();
             }
             return result;
@@ -583,30 +600,45 @@ namespace NetworkMonitor.Payment.Services
         {
             var result = new ResultObj();
             result.Success = false;
-            result.Message = " Started UpdateUserCustomerId ";
+            result.Message = " STRIPESERVICE : UpdateUserCustomerId : ";
 
             var userObj = GetUserFromCustomerId(customerId);
             var userInfo = userObj.Item1;
             var registeredUser = userObj.Item2;
-            int id = 0;
-
-            if (_paymentTransactions.Count > 0)
-            {
-                id = _paymentTransactions.Max(m => m.Id);
-            }
             if (registeredUser == null || userInfo == null) return result;
             if (blankCustomerId) userInfo.CustomerId = "";
-            var paymentTransaction = new PaymentTransaction()
+            int id = 0;
+
+            var paymentTransaction = _paymentTransactions.Where(w => w.EventId == eventId).FirstOrDefault();
+            if (paymentTransaction == null)
             {
-                Id = id + 1,
-                EventDate = DateTime.UtcNow,
-                UserInfo = userInfo,
-                IsUpdate = false,
-                IsComplete = false,
-                Result = result,
-                ExternalUrl = registeredUser.ExternalUrl,
-                EventId = eventId
-            };
+                id = _paymentTransactions.Max(m => m.Id);
+                paymentTransaction = new PaymentTransaction()
+                {
+                    Id = id + 1,
+                    EventDate = DateTime.UtcNow,
+                    IsUpdate = false,
+                    IsComplete = false,
+                    Result = result,
+                    EventId = eventId
+                };
+                _paymentTransactions.Add(paymentTransaction);
+            }
+            else
+            {
+                if (paymentTransaction.IsComplete)
+                {
+                    result.Success = true;
+                    result.Message += " PaymentTransction already complete . Webhook was called again. ";
+                    return result;
+                }
+
+            }
+            paymentTransaction.UserInfo = userInfo;
+            paymentTransaction.ExternalUrl = registeredUser.ExternalUrl;
+
+
+            
             try
             {
 
@@ -634,7 +666,7 @@ namespace NetworkMonitor.Payment.Services
             finally
             {
                 paymentTransaction.Result = result;
-                _paymentTransactions.Add(paymentTransaction);
+                //_paymentTransactions.Add(paymentTransaction);
                 result.Message += SaveTransactions();
             }
             return result;
@@ -644,7 +676,7 @@ namespace NetworkMonitor.Payment.Services
         {
             var result = new ResultObj();
             result.Success = false;
-            result.Message = " Started DeleteUserSubscription ";
+            result.Message = " STRIPESERVICE : DeleteUserSubscription : ";
 
             var userObj = GetUserFromCustomerId(customerId);
             var userInfo = userObj.Item1;
@@ -657,7 +689,7 @@ namespace NetworkMonitor.Payment.Services
                 userInfo.AccountType = paymentObj.ProductName;
                 userInfo.HostLimit = paymentObj.HostLimit;
                 userInfo.CancelAt = DateTime.UtcNow;
-                result.Message += " Success : Changed CustomerID " + customerId + " Subsciption Product to " + paymentObj.ProductName;
+                result.Message += " Success : Changed CustomerID " + customerId + " Subsciption Product to " + paymentObj.ProductName + " ";
             }
             else
             {
@@ -667,22 +699,35 @@ namespace NetworkMonitor.Payment.Services
 
             int id = 0;
 
-            if (_paymentTransactions.Count > 0)
+            var paymentTransaction = _paymentTransactions.Where(w => w.EventId == eventId).FirstOrDefault();
+            if (paymentTransaction == null)
             {
                 id = _paymentTransactions.Max(m => m.Id);
+                paymentTransaction = new PaymentTransaction()
+                {
+                    Id = id + 1,
+                    EventDate = DateTime.UtcNow,
+                    IsUpdate = true,
+                    IsComplete = false,
+                    Result = result,
+                    EventId = eventId
+                };
+                _paymentTransactions.Add(paymentTransaction);
             }
-
-            var paymentTransaction = new PaymentTransaction()
+            else
             {
-                Id = id + 1,
-                EventDate = DateTime.UtcNow,
-                UserInfo = userInfo,
-                IsUpdate = true,
-                IsComplete = false,
-                Result = result,
-                ExternalUrl = registeredUser.ExternalUrl,
-                EventId = eventId
-            };
+                if (paymentTransaction.IsComplete)
+                {
+                    result.Success = true;
+                    result.Message += " PaymentTransction already complete . Webhook was called again. ";
+                    return result;
+                }
+
+            }
+            paymentTransaction.UserInfo = userInfo;
+            paymentTransaction.ExternalUrl = registeredUser.ExternalUrl;
+
+
             try
             {
                 if (userInfo.UserID != null)
@@ -711,7 +756,7 @@ namespace NetworkMonitor.Payment.Services
             finally
             {
                 paymentTransaction.Result = result;
-                _paymentTransactions.Add(paymentTransaction);
+                //_paymentTransactions.Add(paymentTransaction);
                 result.Message += SaveTransactions();
             }
             return result;
@@ -720,7 +765,7 @@ namespace NetworkMonitor.Payment.Services
         public async Task<ResultObj> WakeUp()
         {
             var result = new ResultObj();
-            result.Message = " Service : WakeUp ";
+            result.Message = " STRIPESERVICE : WakeUp : ";
             try
             {
                 await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepos, true);

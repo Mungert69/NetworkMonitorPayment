@@ -215,7 +215,7 @@ namespace NetworkMonitor.Payment.Controllers
                         CustomerId = session.Id,
                     };
                     result = await _stripeService.UpdateCustomerID(registeredUser);
-                    _logger.LogInformation($" Created customer  for UserId {registeredUser.UserId} .");
+                    _logger.LogInformation($" Created customer for UserId {registeredUser.UserId} .");
                 }
                 else
                 {
@@ -235,7 +235,7 @@ namespace NetworkMonitor.Payment.Controllers
                         CustomerId = session.Id,
                     };
                     result = await _stripeService.DeleteCustomerID(registeredUser, stripeEvent.Id);
-                    _logger.LogInformation($" Deleted customer  for UserId {registeredUser.UserId} .");
+                    _logger.LogInformation($" Deleted customer for UserId {registeredUser.UserId} .");
                 }
                 else
                 {
