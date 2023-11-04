@@ -528,7 +528,7 @@ namespace NetworkMonitor.Payment.Services
             var paymentTransaction = _paymentTransactions.Where(w => w.EventId == eventId).FirstOrDefault();
             if (paymentTransaction == null)
             {
-                id = _paymentTransactions.Max(m => m.Id);
+                if (_paymentTransactions.Count()>0) id = _paymentTransactions.Max(m => m.Id);
                 paymentTransaction = new PaymentTransaction()
                 {
                     Id = id + 1,
@@ -612,7 +612,7 @@ namespace NetworkMonitor.Payment.Services
             var paymentTransaction = _paymentTransactions.Where(w => w.EventId == eventId).FirstOrDefault();
             if (paymentTransaction == null)
             {
-                id = _paymentTransactions.Max(m => m.Id);
+                  if (_paymentTransactions.Count()>0) id = _paymentTransactions.Max(m => m.Id);
                 paymentTransaction = new PaymentTransaction()
                 {
                     Id = id + 1,
@@ -702,7 +702,7 @@ namespace NetworkMonitor.Payment.Services
             var paymentTransaction = _paymentTransactions.Where(w => w.EventId == eventId).FirstOrDefault();
             if (paymentTransaction == null)
             {
-                id = _paymentTransactions.Max(m => m.Id);
+                  if (_paymentTransactions.Count()>0) id = _paymentTransactions.Max(m => m.Id);
                 paymentTransaction = new PaymentTransaction()
                 {
                     Id = id + 1,
