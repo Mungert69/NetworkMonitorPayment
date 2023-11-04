@@ -492,6 +492,7 @@ namespace NetworkMonitor.Payment.Services
             var result = new TResultObj<string>();
             result.Success = false;
             result.Message = " STRIPESERVICE : UpdateUserSubscription : ";
+            result.Message += " CustomerId = " + customerId + " . ";
 
             var userObj = GetUserFromCustomerId(customerId);
             var userInfo = userObj.Item1;
@@ -551,7 +552,7 @@ namespace NetworkMonitor.Payment.Services
 
             try
             {
-                if (userInfo.UserID != null && foundProduct)
+                if (userInfo.UserID != null && foundProduct && registeredUser.ExternalUrl != "")
                 {
                     result.Success = await PublishRepo.UpdateUserSubscriptionAsync(_logger, _rabbitRepos, paymentTransaction);
                     if (result.Success)
@@ -598,6 +599,7 @@ namespace NetworkMonitor.Payment.Services
             var result = new TResultObj<string>();
             result.Success = false;
             result.Message = " STRIPESERVICE : UpdateUserCustomerId : ";
+            result.Message += " CustomerId = " + customerId + " . ";
 
             var userObj = GetUserFromCustomerId(customerId);
             var userInfo = userObj.Item1;
@@ -680,6 +682,7 @@ namespace NetworkMonitor.Payment.Services
             var result = new TResultObj<string>();
             result.Success = false;
             result.Message = " STRIPESERVICE : DeleteUserSubscription : ";
+            result.Message += " CustomerId = " + customerId + " . ";
 
             var userObj = GetUserFromCustomerId(customerId);
             var userInfo = userObj.Item1;
@@ -691,6 +694,7 @@ namespace NetworkMonitor.Payment.Services
                 userInfo.AccountType = paymentObj.ProductName;
                 userInfo.HostLimit = paymentObj.HostLimit;
                 userInfo.CancelAt = DateTime.UtcNow;
+                userInfo.CustomerId="";
                 result.Message += " Success : Changed CustomerID " + customerId + " Subsciption Product to " + paymentObj.ProductName + " ";
             }
             else
