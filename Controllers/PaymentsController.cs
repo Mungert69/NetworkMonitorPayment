@@ -182,7 +182,7 @@ namespace NetworkMonitor.Payment.Controllers
                 var service = new Stripe.BillingPortal.SessionService(this.client);
                 var session = await service.CreateAsync(options);
                 Response.Headers.Add("Location", session.Url);
-                _logger.LogInformation($" Success : Redirecting to Billing portal  for userId {userId} sessionId {sessionId}");
+                _logger.LogInformation($" Success : Redirecting to Billing portal  for customerId {customerId}");
 
                 return new StatusCodeResult(303);
 
@@ -203,9 +203,9 @@ namespace NetworkMonitor.Payment.Controllers
         [HttpPost("webhook")]
         public async Task<IActionResult> Webhook()
         {
-                        var result = new ResultObj();
+            var result = new ResultObj();
             result.Success = false;
-            result.Message=" API : Webhook : ";
+            result.Message = " API : Webhook : ";
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
             Event stripeEvent;
             try
@@ -306,7 +306,7 @@ namespace NetworkMonitor.Payment.Controllers
                     _logger.LogInformation($" Deleting customer subcription for customerId: {session.Customer}");
                     var tResult = await _stripeService.DeleteUserSubscription(session.CustomerId, stripeEvent.Id);
                     result.Success = tResult.Success;
-                    result.Message = tResult.Message;
+                    result.Message += tResult.Message;
                     result.Data = tResult.Data;
                 }
 
@@ -325,7 +325,7 @@ namespace NetworkMonitor.Payment.Controllers
                     _logger.LogInformation($"Creating customer subcription for customerId: {session.Customer}");
                     var tResult = await _stripeService.UpdateUserCustomerId(session.CustomerId, stripeEvent.Id);
                     result.Success = tResult.Success;
-                    result.Message = tResult.Message;
+                    result.Message += tResult.Message;
                     result.Data = tResult.Data;
                 }
 
@@ -334,18 +334,30 @@ namespace NetworkMonitor.Payment.Controllers
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
+
                 if (session == null || session.CustomerId == null)
                 {
                     _logger.LogError("Error : stripeEvent CustomerSubscriptionUpdated contains no customerId .");
                 }
                 else
                 {
-                    _logger.LogInformation($"Updating customer subcription for customerId: {session.Customer}");
+                    var items = session.Items;
+                    SubscriptionItem? item = items.FirstOrDefault();
+                    if (items != null && item.Price!=null && item.Price.Id!=null)
+                    { 
 
-                    var tResult = await _stripeService.UpdateUserSubscription(session, stripeEvent.Id);
-                    result.Success = tResult.Success;
-                    result.Message = tResult.Message;
-                    result.Data = tResult.Data;
+                        _logger.LogInformation($" Updating customer subcription for customerId: {session.Customer}");
+
+                        var tResult = await _stripeService.UpdateUserSubscription(session.CustomerId, stripeEvent.Id,item.Price.Id, session.CancelAt);
+                        result.Success = tResult.Success;
+                        result.Message += tResult.Message;
+                        result.Data = tResult.Data;
+                    }
+                    else
+                    {
+                        result.Message += " Error : No Items found is session returned from Stripe. Check dashboard for correctly setup Prices. ";
+                    }
+
                 }
 
             }
@@ -356,9 +368,10 @@ namespace NetworkMonitor.Payment.Controllers
             }
             else
             {
+                _logger.LogError($" Error : Webhook failed .  Error was : {result.Message}");
+
                 return BadRequest(new ErrorResponse
                 {
-                    _logger.LogError($" Error : Webhook failed .  Error was : {result.Message}");
                     ErrorMessage = new ErrorMessage
                     {
                         Message = result.Message,

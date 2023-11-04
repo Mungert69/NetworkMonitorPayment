@@ -30,7 +30,7 @@ namespace NetworkMonitor.Objects.Repository
                 logger.LogInformation(" Published event PaymentServiceItitObj.IsPaymentServiceReady = " + isReady);
             }
         }
-        public static async Task UpdateUserSubscriptionAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
+        public static async Task<bool> UpdateUserSubscriptionAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
             try
             {
@@ -39,18 +39,21 @@ namespace NetworkMonitor.Objects.Repository
                 {
                     await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserSubscription", paymentTransaction);
                     logger.LogInformation(" Published event updateUserSubscription for Customer = " + paymentTransaction.UserInfo.CustomerId);
+                    return true;
                 }
                 else
                 {
                     logger.LogError($" Error : RabbitRepo for {paymentTransaction.ExternalUrl} can not be found");
+
                 }
             }
             catch (Exception ex)
             {
                 logger.LogError(" Error in PublishRepo.UpdateUserSubscriptionAsync. Error was : " + ex.Message);
             }
+            return false;
         }
-        public static async Task UpdateUserPingInfosAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
+        public static async Task<bool> UpdateUserPingInfosAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
             IRabbitRepo? rabbitRepo;
             try
@@ -60,6 +63,7 @@ namespace NetworkMonitor.Objects.Repository
                 {
                     await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserPingInfos", paymentTransaction);
                     logger.LogInformation(" Published event updateUserPingInfos for Customer = " + paymentTransaction.UserInfo.CustomerId);
+                    return true;
                 }
                 else
                 {
@@ -70,8 +74,9 @@ namespace NetworkMonitor.Objects.Repository
             {
                 logger.LogError(" Error in PublishRepo.UpdateUserPingInfosAsync. Error was : " + ex.Message);
             }
+            return false;
         }
-        public static async Task UpdateUserCustomerIdAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
+        public static async Task<bool> UpdateUserCustomerIdAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
             try
             {
@@ -80,6 +85,7 @@ namespace NetworkMonitor.Objects.Repository
                 {
                     await rabbitRepo.PublishAsync<PaymentTransaction>("updateUserCustomerId", paymentTransaction);
                     logger.LogInformation(" Published event updateUserCustomerId for User = " + paymentTransaction.UserInfo.UserID);
+                    return true;
                 }
                 else
                 {
@@ -90,6 +96,7 @@ namespace NetworkMonitor.Objects.Repository
             {
                 logger.LogError(" Error in PublishRepo.CreateUserSubscriptionAsync. Error was : " + ex.Message);
             }
+            return false;
         }
     }
 }
