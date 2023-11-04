@@ -28,9 +28,9 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser);
         Task<ResultObj> UpdateCustomerID(RegisteredUser registeredUser);
         Task<ResultObj> DeleteCustomerID(RegisteredUser registeredUser, string eventId);
-        Task<ResultObj> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false);
-        Task<ResultObj> UpdateUserSubscription(Subscription session, string eventId);
-        Task<ResultObj> DeleteUserSubscription(string customerId, string eventId);
+        Task<TResultObj<string>> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false);
+        Task<TResultObj<string>> UpdateUserSubscription(Subscription session, string eventId);
+        Task<TResultObj<string>> DeleteUserSubscription(string customerId, string eventId);
         Task Init();
         ConcurrentBag<RegisteredUser> RegisteredUsers { get; }
     }
@@ -483,9 +483,9 @@ namespace NetworkMonitor.Payment.Services
             return (null, null);
         }
 
-        public async Task<ResultObj> UpdateUserSubscription(Subscription session, string eventId)
+        public async Task<TResultObj<string>> UpdateUserSubscription(Subscription session, string eventId)
         {
-            var result = new ResultObj();
+            var result = new TResultObj<string>();
             result.Success = false;
             result.Message = " STRIPESERVICE : UpdateUserSubscription : ";
             var customerId = session.CustomerId;
@@ -596,9 +596,9 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-        public async Task<ResultObj> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false)
+        public async Task<TResultObj<string>> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false)
         {
-            var result = new ResultObj();
+            var result = new TResultObj<string>();
             result.Success = false;
             result.Message = " STRIPESERVICE : UpdateUserCustomerId : ";
 
@@ -672,9 +672,9 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-        public async Task<ResultObj> DeleteUserSubscription(string customerId, string eventId)
+        public async Task<TResultObj<string>> DeleteUserSubscription(string customerId, string eventId)
         {
-            var result = new ResultObj();
+            var result = new TResultObj<string>();
             result.Success = false;
             result.Message = " STRIPESERVICE : DeleteUserSubscription : ";
 

@@ -192,8 +192,8 @@ namespace NetworkMonitor.Payment.Controllers
             }
             catch (Exception e)
             {
-                _logger.LogError(" Error : Constructing StripeEvent . Error was : "+e.Message);
-               return BadRequest(new ErrorResponse
+                _logger.LogError(" Error : Constructing StripeEvent . Error was : " + e.Message);
+                return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
                     {
@@ -243,7 +243,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
-               
+
             if (stripeEvent.Type == Events.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
@@ -266,7 +266,7 @@ namespace NetworkMonitor.Payment.Controllers
 
             }
 
-           
+
             if (stripeEvent.Type == Events.CustomerSubscriptionDeleted)
             {
                 var session = stripeEvent.Data.Object as Subscription;
@@ -278,12 +278,14 @@ namespace NetworkMonitor.Payment.Controllers
                 else
                 {
                     _logger.LogInformation($" Deleting customer subcription for customerId: {session.Customer}");
-                    result = await _stripeService.DeleteUserSubscription(session.CustomerId, stripeEvent.Id);
-               
+                    var tResult = await _stripeService.DeleteUserSubscription(session.CustomerId, stripeEvent.Id);
+                    result.Success = tResult.Success;
+                    result.Message = tResult.Message;
+                    result.Data = tResult.Data;
                 }
 
             }
-           
+
             if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
@@ -295,8 +297,10 @@ namespace NetworkMonitor.Payment.Controllers
                 else
                 {
                     _logger.LogInformation($"Creating customer subcription for customerId: {session.Customer}");
-                    result = await _stripeService.UpdateUserCustomerId(session.CustomerId, stripeEvent.Id);
-
+                    var tResult = await _stripeService.UpdateUserCustomerId(session.CustomerId, stripeEvent.Id);
+                    result.Success = tResult.Success;
+                    result.Message = tResult.Message;
+                    result.Data = tResult.Data;
                 }
 
             }
@@ -312,8 +316,10 @@ namespace NetworkMonitor.Payment.Controllers
                 {
                     _logger.LogInformation($"Updating customer subcription for customerId: {session.Customer}");
 
-                    result = await _stripeService.UpdateUserSubscription(session,stripeEvent.Id);
-
+                    var tResult = await _stripeService.UpdateUserSubscription(session, stripeEvent.Id);
+                    result.Success = tResult.Success;
+                    result.Message = tResult.Message;
+                    result.Data = tResult.Data;
                 }
 
             }
@@ -332,7 +338,7 @@ namespace NetworkMonitor.Payment.Controllers
                     }
                 });
             }
-  
+
         }
     }
 }
