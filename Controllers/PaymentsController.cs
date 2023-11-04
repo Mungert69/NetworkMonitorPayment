@@ -33,13 +33,13 @@ namespace NetworkMonitor.Payment.Controllers
         public async Task<IActionResult> CreateCheckoutSession([FromRoute] string userId, [FromRoute] string productName, [FromRoute] string email)
         {
             var result = new ResultObj();
-            result.Message = " API : CreateCheckoutSesion ";
+            result.Message = " API : CreateCheckoutSesion : ";
 
             // Look for a Registerd User Object in _stripeService.RegisteredUsers with the userId/
             // If not found, return BadRequest with error message
             if (_stripeService.RegisteredUsers.Where(w => w.UserId == userId).FirstOrDefault() == null)
             {
-                result.Message += " Unable to find user with userId " + userId + " .";
+                result.Message += " Error : Unable to find user with userId " + userId + " .";
                 result.Success = false;
                 _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
@@ -56,7 +56,7 @@ namespace NetworkMonitor.Payment.Controllers
             ProductObj? productObj = this.options.Value.StripeProducts.Where(w => w.ProductName == productName).FirstOrDefault();
             if (productObj == null || productObj.PriceId == null)
             {
-                result.Message += " Unable to find product info for product name " + productName + " . ";
+                result.Message += " Error : Unable to find product info for product name " + productName + " . ";
                 _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
                 {
@@ -89,12 +89,12 @@ namespace NetworkMonitor.Payment.Controllers
                 var session = await service.CreateAsync(options);
                 Response.Headers.Add("Location", session.Url);
                 _stripeService.SessionList.Add(session.Id, userId);
-                _logger.LogInformation("Success : Added UserID " + userId + " to SessionList with customerId " + session.CustomerId + " Add got sessionId " + session.Id);
+                _logger.LogInformation(" Success : Redirecting to Checkout session for UserID " + userId + " with customerId " + session.CustomerId + " , sessionId " + session.Id + " . ");
                 return new StatusCodeResult(303);
             }
             catch (StripeException e)
             {
-                _logger.LogError(" Stripe Error . Error was : " + e.StripeError.Message);
+                _logger.LogError(" Error : Can not create Checkout Sessions . Stripe Error . Error was : " + e.StripeError.Message + " . ");
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
@@ -107,14 +107,21 @@ namespace NetworkMonitor.Payment.Controllers
         [HttpGet("checkout-session")]
         public async Task<IActionResult> CheckoutSession(string sessionId)
         {
+            var result = new ResultObj();
+            result.Message = " API : CheckoutSession : ";
             try
             {
                 var service = new SessionService(this.client);
                 var session = await service.GetAsync(sessionId);
+                string? userId = _stripeService.SessionList[sessionId];
+                result.Message += $" Success : Returning Checkout Session for userId {userId} sessionId {sessionId}";
+
+                _logger.LogInformation(result.Message);
                 return Ok(session);
             }
             catch (Exception e)
             {
+                _logger.LogError($" Error : Can not return Checkout Session . Error was : {e.Message}");
                 return BadRequest(new ErrorResponse
                 {
                     ErrorMessage = new ErrorMessage
@@ -129,12 +136,60 @@ namespace NetworkMonitor.Payment.Controllers
         public async Task<IActionResult> CustomerPortal([FromRoute] string customerId)
         {
             var result = new ResultObj();
-            result.Message = " API : CustomerPortal ";
+            result.Message = " API : CustomerPortal : ";
+            try
+            {
+                if (_stripeService.RegisteredUsers.Where(w => w.CustomerId == customerId).FirstOrDefault() == null)
+                {
+                    result.Message += " Error : Unable to find user with customerId " + customerId + " .";
+                    result.Success = false;
+                    _logger.LogError(result.Message);
+                    return BadRequest(new ErrorResponse
+                    {
+                        ErrorMessage = new ErrorMessage
+                        {
+                            Message = result.Message,
+                        }
+                    });
+                }
+                if (customerId == null || customerId == "" || customerId.Length > 100)
+                {
+                    result.Message += " Error : Customer Portal Request : Malformed CustomerID. ";
+                    _logger.LogError(result.Message);
+                    return BadRequest(new ErrorResponse
+                    {
+                        ErrorMessage = new ErrorMessage
+                        {
+                            Message = result.Message,
+                        }
+                    });
+                }
+                /*string sessionId = Request.Form["session_Id"];
+               string customerId = Request.Form["customer_Id"];
+               if (customerId == null)
+               {
+                   var checkoutService = new SessionService(this.client);
+                   var checkoutSession = await checkoutService.GetAsync(sessionId);
+                   customerId = checkoutSession.CustomerId;
+               }
+               */
+                var returnUrl = this.options.Value.StripeDomain;
+                var options = new Stripe.BillingPortal.SessionCreateOptions
+                {
+                    Customer = customerId,
+                    ReturnUrl = returnUrl,
+                };
+                var service = new Stripe.BillingPortal.SessionService(this.client);
+                var session = await service.CreateAsync(options);
+                Response.Headers.Add("Location", session.Url);
+                _logger.LogInformation($" Success : Redirecting to Billing portal  for userId {userId} sessionId {sessionId}");
 
-            if (_stripeService.RegisteredUsers.Where(w => w.CustomerId == customerId).FirstOrDefault() == null)
+                return new StatusCodeResult(303);
+
+            }
+            catch (Exception e)
             {
-                result.Message += " Unable to find user with customerId " + customerId + " .";
-                result.Success = false;
+                result.Message += $" Error : Can not redirect to Billing Portal . Error was : {e.Message}";
                 _logger.LogError(result.Message);
                 return BadRequest(new ErrorResponse
                 {
@@ -144,41 +199,13 @@ namespace NetworkMonitor.Payment.Controllers
                     }
                 });
             }
-            if (customerId == null || customerId == "" || customerId.Length > 100)
-            {
-                result.Message += " Customer Portal Request : Malformed CustomerID.";
-                _logger.LogError(result.Message);
-                return BadRequest(new ErrorResponse
-                {
-                    ErrorMessage = new ErrorMessage
-                    {
-                        Message = result.Message,
-                    }
-                });
-            }
-            /*string sessionId = Request.Form["session_Id"];
-           string customerId = Request.Form["customer_Id"];
-           if (customerId == null)
-           {
-               var checkoutService = new SessionService(this.client);
-               var checkoutSession = await checkoutService.GetAsync(sessionId);
-               customerId = checkoutSession.CustomerId;
-           }
-           */
-            var returnUrl = this.options.Value.StripeDomain;
-            var options = new Stripe.BillingPortal.SessionCreateOptions
-            {
-                Customer = customerId,
-                ReturnUrl = returnUrl,
-            };
-            var service = new Stripe.BillingPortal.SessionService(this.client);
-            var session = await service.CreateAsync(options);
-            Response.Headers.Add("Location", session.Url);
-            return new StatusCodeResult(303);
         }
         [HttpPost("webhook")]
         public async Task<IActionResult> Webhook()
         {
+                        var result = new ResultObj();
+            result.Success = false;
+            result.Message=" API : Webhook : ";
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
             Event stripeEvent;
             try
@@ -201,8 +228,7 @@ namespace NetworkMonitor.Payment.Controllers
                     }
                 });
             }
-            var result = new ResultObj();
-            result.Success = false;
+
             if (stripeEvent.Type == Events.CustomerCreated)
             {
                 var session = stripeEvent.Data.Object as Stripe.Customer;
@@ -332,6 +358,7 @@ namespace NetworkMonitor.Payment.Controllers
             {
                 return BadRequest(new ErrorResponse
                 {
+                    _logger.LogError($" Error : Webhook failed .  Error was : {result.Message}");
                     ErrorMessage = new ErrorMessage
                     {
                         Message = result.Message,
