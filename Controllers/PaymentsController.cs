@@ -324,9 +324,25 @@ namespace NetworkMonitor.Payment.Controllers
                 {
                     _logger.LogInformation($"Creating customer subcription for customerId: {session.Customer}");
                     var tResult = await _stripeService.UpdateUserCustomerId(session.CustomerId, stripeEvent.Id);
-                    result.Success = tResult.Success;
-                    result.Message += tResult.Message;
-                    result.Data = tResult.Data;
+                    var items = session.Items;
+                    var tsResult=new TResultObj<string>();
+                    SubscriptionItem? item = items.FirstOrDefault();
+                    if (items != null && item.Price!=null && item.Price.Id!=null)
+                    { 
+
+                        _logger.LogInformation($" Updating customer subcription for customerId: {session.CustomerId} Price.Id {item.Price.Id}");
+
+                        tsResult = await _stripeService.UpdateUserSubscription(session.CustomerId, stripeEvent.Id+"_create",item.Price.Id,null);
+                       
+                    }
+                    else
+                    {
+                        tsResult.Message += " Error : No Items found is session returned from Stripe. Check dashboard for correctly setup Prices. ";
+                    }  
+                    result.Success = tResult.Success && tsResult.Success;
+                    result.Message += tResult.Message+tsResult.Message;
+                    if (tsResult!=null) result.Data = tsResult.Data;
+                    else result.Data=tResult.Data;
                 }
 
             }
