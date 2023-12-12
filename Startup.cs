@@ -32,10 +32,15 @@ namespace NetworkMonitor.Payment
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddLogging(builder =>
+          services.AddLogging(builder =>
                {
-                   builder.AddConsole();
+                   builder.AddSimpleConsole(options =>
+                        {
+                            options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+                            options.IncludeScopes = true;
+                        });
                });
+
             
             services.Configure<PaymentOptions>(options =>
             {
