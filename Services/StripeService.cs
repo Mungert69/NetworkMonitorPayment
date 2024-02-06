@@ -265,22 +265,32 @@ namespace NetworkMonitor.Payment.Services
             try
             {
                 // get a list of PaymentTransactions that are not complete and order by IsUpdate then EventDate.
-                _paymentTransactions.Where(w => w.IsComplete == false).OrderBy(o => o.IsUpdate).ThenBy(o => o.EventDate).ToList().ForEach(async p =>
+                foreach (var p in _paymentTransactions.Where(w => w.IsComplete == false).OrderBy(o => o.IsUpdate).ThenBy(o => o.EventDate).ToList())
                 {
-                    // Using p.IsUpdate to determine if this is an update or a new subscription. Publish to RabbitMQ.
-                    if (p.IsUpdate)
-                    {
-                        await UpdateUserSubscription(p.UserInfo.CustomerId, p.EventId, p.PriceId, p.UserInfo.CancelAt);
-                    }
-                    if (p.IsCreate)
-                    {
-                        await UpdateUserCustomerId(p.UserInfo.CustomerId, p.EventId);
-                    }
-                    if (p.IsDelete)
-                    {
-                        await DeleteUserSubscription(p.UserInfo.CustomerId, p.EventId);
-                    }
                     result.Message += " Warning : Retry " + p.RetryCount + " of Payment Transaction  for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ";
+
+                    // Using p.IsUpdate to determine if this is an update or a new subscription. Publish to RabbitMQ.
+                    if (p.UserInfo.CustomerId != null)
+                    {
+                        if (p.IsUpdate)
+                        {
+                            await UpdateUserSubscription(p.UserInfo.CustomerId, p.EventId, p.PriceId, p.UserInfo.CancelAt);
+                        }
+                        if (p.IsCreate)
+                        {
+                            await UpdateUserCustomerId(p.UserInfo.CustomerId, p.EventId);
+                        }
+                        if (p.IsDelete)
+                        {
+                            await DeleteUserSubscription(p.UserInfo.CustomerId, p.EventId);
+                        }
+                    }
+                    else
+                    {
+                        if (p.UserInfo.UserID != null) result.Message += " Warning : Retry with CustomerID=null" + p.UserInfo.UserID;
+                        else result.Message += " Warning : Retry with CustomerID=null and UserID=null .";
+                    }
+
                     p.RetryCount++;
                     if (p.RetryCount > 5)
                     {
@@ -288,8 +298,8 @@ namespace NetworkMonitor.Payment.Services
                         _logger.LogError(" Error : Payment Transaction Failed for Customer " + p.UserInfo.CustomerId + " : " + (p.IsUpdate ? "Updated" : "Created") + " : " + p.UserInfo.UserID + " : " + p.Id + " : " + p.EventDate + " . ");
                     }
                     await SaveTransactions();
-                    Task.Delay(500).Wait();
-                });
+                    await Task.Delay(500);
+                }
                 await PublishRepo.PaymentReadyAsync(_logger, _rabbitRepos, true);
                 result.Message += " Success : Payment Transaction Queue Checked . ";
                 result.Success = true;
@@ -472,7 +482,7 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-        private (UserInfo?, RegisteredUser?) GetUserFromCustomerId(string customerId)
+        private (UserInfo, RegisteredUser) GetUserFromCustomerId(string customerId)
         {
             var registeredUser = _registeredUsers.Where(w => w.CustomerId == customerId).FirstOrDefault();
             if (registeredUser != null)
@@ -497,12 +507,13 @@ namespace NetworkMonitor.Payment.Services
             var userObj = GetUserFromCustomerId(customerId);
             var userInfo = userObj.Item1;
             var registeredUser = userObj.Item2;
+           
             userInfo.CancelAt = cancelAt;
             bool foundProduct = false;
 
 
 
-            ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == priceId).FirstOrDefault();
+            var paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == priceId).FirstOrDefault();
             if (paymentObj != null)
             {
                 userInfo.AccountType = paymentObj.ProductName;
@@ -688,13 +699,13 @@ namespace NetworkMonitor.Payment.Services
             var userInfo = userObj.Item1;
             var registeredUser = userObj.Item2;
 
-            ProductObj paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == "price_free").FirstOrDefault();
+            var paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == "price_free").FirstOrDefault();
             if (paymentObj != null)
             {
                 userInfo.AccountType = paymentObj.ProductName;
                 userInfo.HostLimit = paymentObj.HostLimit;
                 userInfo.CancelAt = DateTime.UtcNow;
-                userInfo.CustomerId="";
+                userInfo.CustomerId = "";
                 result.Message += " Success : Changed CustomerID " + customerId + " Subsciption Product to " + paymentObj.ProductName + " ";
             }
             else
