@@ -42,6 +42,9 @@ namespace NetworkMonitor.Utils.Helpers
             return new PingParams();
 
         }
+	public AlertParams GetAlertParams(){
+		return new AlertParams();
+	}
     }
 
 }
