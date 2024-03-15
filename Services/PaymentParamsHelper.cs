@@ -13,7 +13,7 @@ using NetworkMonitor.Utils.Helpers;
 using NetworkMonitor.Objects.Factory;
 namespace NetworkMonitor.Utils.Helpers
 {
-  
+
     public class PaymentParamsHelper : ISystemParamsHelper
     {
 
@@ -21,7 +21,7 @@ namespace NetworkMonitor.Utils.Helpers
         private SystemUrl _thisSystemUrl;
         public PaymentParamsHelper(SystemUrl thisSystemUrl)
         {
-            _thisSystemUrl=thisSystemUrl;
+            _thisSystemUrl = thisSystemUrl;
 
         }
         public string GetPublicIP()
@@ -42,9 +42,13 @@ namespace NetworkMonitor.Utils.Helpers
             return new PingParams();
 
         }
-	public AlertParams GetAlertParams(){
-		return new AlertParams();
-	}
+        public AlertParams GetAlertParams()
+        {
+            return new AlertParams();
+        }
+        public MLParams GetMLParams() {
+            return new MLParams();
+        }
     }
 
 }
