@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using NetworkMonitor.Objects;
 using NetworkMonitor.Objects.Repository;
 using NetworkMonitor.Objects.Factory;
+using NetworkMonitor.Utils.Helpers;
 using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Utils.Helpers;
 using Microsoft.Extensions.Options;
@@ -125,14 +126,14 @@ namespace NetworkMonitor.Payment.Services
             {
                 this.options.Value.SystemUrls.ForEach(f =>
                 {
-                    ISystemParamsHelper paymentParamsHelper = new PaymentParamsHelper(f);
+                    ISystemParamsHelper localSystemParamsHelper = new LocalSystemParamsHelper(f);
                     _logger.LogInformation(" Adding RabbitRepo for : " + f.ExternalUrl + " . ");
-                    _rabbitRepos.Add(new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), paymentParamsHelper));
+                    _rabbitRepos.Add(new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParamsHelper));
                 });
             }
             catch (Exception e)
             {
-                result.Message += " Error : Could not setup RabbitListner. Error was : " + e.ToString() + " . ";
+                result.Message += " Error : Could not setup RabbitRepos. Error was : " + e.ToString() + " . ";
                 result.Success = false;
             }
             try

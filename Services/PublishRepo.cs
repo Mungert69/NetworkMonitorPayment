@@ -2,16 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NetworkMonitor.Objects.ServiceMessage;
-using Newtonsoft.Json;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using NetworkMonitor.Utils;
 namespace NetworkMonitor.Objects.Repository
 {
     public class PublishRepo
     {
         public static async Task UpdateProductsAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, UpdateProductObj updateProductObj)
         {
-            logger.LogInformation(" Publishing products : " + JsonConvert.SerializeObject(updateProductObj));
+            logger.LogInformation(" Publishing products : " + JsonUtils.WriteJsonObjectToString<UpdateProductObj>(updateProductObj));
             // publish to all systems.
             foreach (IRabbitRepo rabbitRepo in rabbitRepos)
             {
