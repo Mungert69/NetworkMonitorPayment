@@ -41,6 +41,7 @@ namespace NetworkMonitor.Payment.Services
         private Dictionary<string, string> _sessionList = new Dictionary<string, string>();
         private List<PaymentTransaction> _paymentTransactions = new List<PaymentTransaction>();
         private List<IRabbitRepo> _rabbitRepos = new List<IRabbitRepo>();
+         private List<IRabbitListener> _rabbitListeners = new List<IRabbitListener>();
         private ILogger _logger;
         private IFileRepo _fileRepo;
         private ILoggerFactory _loggerFactory;
@@ -129,6 +130,7 @@ namespace NetworkMonitor.Payment.Services
                     ISystemParamsHelper localSystemParamsHelper = new LocalSystemParamsHelper(f);
                     _logger.LogInformation(" Adding RabbitRepo for : " + f.ExternalUrl + " . ");
                     _rabbitRepos.Add(new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParamsHelper));
+                    _rabbitListeners.Add(new RabbitListener(this, _loggerFactory.CreateLogger<RabbitListener>(), localSystemParamsHelper));
                 });
             }
             catch (Exception e)
