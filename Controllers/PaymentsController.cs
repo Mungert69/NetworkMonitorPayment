@@ -207,7 +207,7 @@ namespace NetworkMonitor.Payment.Controllers
             result.Success = false;
             result.Message = " API : Webhook : ";
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-            Event stripeEvent;
+            Stripe.Event stripeEvent;
             try
             {
                 stripeEvent = EventUtility.ConstructEvent(
