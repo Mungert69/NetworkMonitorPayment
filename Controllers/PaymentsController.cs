@@ -212,7 +212,8 @@ namespace NetworkMonitor.Payment.Controllers
                 stripeEvent = EventUtility.ConstructEvent(
                     json,
                     Request.Headers["Stripe-Signature"],
-                    this.options.Value.StripeWebhookSecret
+                    this.options.Value.StripeWebhookSecret,
+                    throwOnApiVersionMismatch: false
                 );
                 _logger.LogInformation($" Webhook notification with type: {stripeEvent.Type} found for {stripeEvent.Id}");
             }
