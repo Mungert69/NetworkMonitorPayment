@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
 
+namespace NetworkMonitor.Payment.Models;
+
 public class ErrorMessage
 {
     [JsonProperty("message")]

@@ -1,19 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using Stripe;
-using Stripe.Checkout;
-using Stripe.Events;
-using NetworkMonitor.Payment.Services;
-using NetworkMonitor.Objects.Factory;
-using NetworkMonitor.Objects.ServiceMessage;
+using System.Linq; // For LINQ methods like Where, FirstOrDefault
+using System.Collections.Generic; // For List and other collections
+using Microsoft.AspNetCore.Mvc; // For IActionResult, Controller, HttpGet, etc.
+using Microsoft.Extensions.Logging; // For ILogger
+using Microsoft.Extensions.Options; // For IOptions
+using NetworkMonitor.Payment.Services; // Assuming IStripeService and other custom services are part of this namespace
+using NetworkMonitor.Payment.Models; // Assuming models like ProductObj, RegisteredUser, ResultObj, etc.
 using NetworkMonitor.Objects;
-using Microsoft.Extensions.Logging;
-using System.ComponentModel.DataAnnotations;
+using Stripe.Checkout;
+using NetworkMonitor.Objects.ServiceMessage;
 namespace NetworkMonitor.Payment.Controllers
 {
     public class PaymentsController : Controller
@@ -230,7 +228,7 @@ namespace NetworkMonitor.Payment.Controllers
                 });
             }
 
-            if (stripeEvent.Type == "customer.created")
+            if (stripeEvent.Type == Events.CustomerCreated)
             {
                 var session = stripeEvent.Data.Object as Stripe.Customer;
 
@@ -250,7 +248,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
-            if (stripeEvent.Type == "customer.deleted")
+            if (stripeEvent.Type == Events.CustomerDeleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Customer;
 
@@ -271,7 +269,7 @@ namespace NetworkMonitor.Payment.Controllers
 
             }
 
-            if (stripeEvent.Type == "checkout.session.completed")
+            if (stripeEvent.Type == Events.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
 
@@ -294,7 +292,7 @@ namespace NetworkMonitor.Payment.Controllers
             }
 
 
-            if (stripeEvent.Type == "customer.subscription.deleted")
+            if (stripeEvent.Type == Events.CustomerSubscriptionDeleted)
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
@@ -313,7 +311,7 @@ namespace NetworkMonitor.Payment.Controllers
 
             }
 
-            if (stripeEvent.Type == "customer.subscription.created")
+            if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
@@ -347,7 +345,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
-            if (stripeEvent.Type == "customer.subscription.updated")
+            if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
 

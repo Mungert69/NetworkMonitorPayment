@@ -1,5 +1,6 @@
-﻿using Newtonsoft.Json;
-
+﻿
+using Newtonsoft.Json;
+namespace NetworkMonitor.Payment.Models;
 public class ConfigResponse
 {
     [JsonProperty("publishableKey")]
