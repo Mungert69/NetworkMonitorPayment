@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
+using Stripe.Events;
 using NetworkMonitor.Payment.Services;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Objects.ServiceMessage;
@@ -229,7 +230,7 @@ namespace NetworkMonitor.Payment.Controllers
                 });
             }
 
-            if (stripeEvent.Type == Events.CustomerCreated)
+            if (stripeEvent.Type == "customer.created")
             {
                 var session = stripeEvent.Data.Object as Stripe.Customer;
 
@@ -249,7 +250,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
-            if (stripeEvent.Type == Events.CustomerDeleted)
+            if (stripeEvent.Type == "customer.deleted")
             {
                 var session = stripeEvent.Data.Object as Stripe.Customer;
 
@@ -270,7 +271,7 @@ namespace NetworkMonitor.Payment.Controllers
 
             }
 
-            if (stripeEvent.Type == Events.CheckoutSessionCompleted)
+            if (stripeEvent.Type == "checkout.session.completed")
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
 
@@ -293,7 +294,7 @@ namespace NetworkMonitor.Payment.Controllers
             }
 
 
-            if (stripeEvent.Type == Events.CustomerSubscriptionDeleted)
+            if (stripeEvent.Type == "customer.subscription.deleted")
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
@@ -312,7 +313,7 @@ namespace NetworkMonitor.Payment.Controllers
 
             }
 
-            if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
+            if (stripeEvent.Type == "customer.subscription.created")
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
@@ -346,7 +347,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
-            if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
+            if (stripeEvent.Type == "customer.subscription.updated")
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
