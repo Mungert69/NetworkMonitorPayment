@@ -229,7 +229,7 @@ namespace NetworkMonitor.Payment.Controllers
                 });
             }
 
-            if (stripeEvent.Type == Events.CustomerCreated)
+            if (stripeEvent.Type == EventTypes.CustomerCreated)
             {
                 var session = stripeEvent.Data.Object as Stripe.Customer;
 
@@ -249,7 +249,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
-            if (stripeEvent.Type == Events.CustomerDeleted)
+            if (stripeEvent.Type == EventTypes.CustomerDeleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Customer;
 
@@ -270,7 +270,7 @@ namespace NetworkMonitor.Payment.Controllers
 
             }
 
-            if (stripeEvent.Type == Events.CheckoutSessionCompleted)
+            if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
 
@@ -293,7 +293,7 @@ namespace NetworkMonitor.Payment.Controllers
             }
 
 
-            if (stripeEvent.Type == Events.CustomerSubscriptionDeleted)
+            if (stripeEvent.Type == EventTypes.CustomerSubscriptionDeleted)
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
@@ -312,7 +312,7 @@ namespace NetworkMonitor.Payment.Controllers
 
             }
 
-            if (stripeEvent.Type == Events.CustomerSubscriptionCreated)
+            if (stripeEvent.Type == EventTypes.CustomerSubscriptionCreated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
@@ -346,7 +346,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
 
             }
-            if (stripeEvent.Type == Events.CustomerSubscriptionUpdated)
+            if (stripeEvent.Type == EventTypes.CustomerSubscriptionUpdated)
             {
                 var session = stripeEvent.Data.Object as Subscription;
 
