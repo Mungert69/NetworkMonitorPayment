@@ -29,6 +29,7 @@ namespace NetworkMonitor.Payment.Services
         Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser);
         Task<ResultObj> UpdateCustomerID(RegisteredUser registeredUser);
         Task<ResultObj> DeleteCustomerID(RegisteredUser registeredUser, string eventId);
+        Task<TResultObj<string>> ProcessPaymentLink(string email, string paymentLinkId, string eventId);
         Task<TResultObj<string>> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false);
         Task<TResultObj<string>> UpdateUserSubscription(string customerId, string eventId, string priceId, DateTime? cancelAt);
         Task<TResultObj<string>> DeleteUserSubscription(string customerId, string eventId);
@@ -41,7 +42,7 @@ namespace NetworkMonitor.Payment.Services
         private Dictionary<string, string> _sessionList = new Dictionary<string, string>();
         private List<PaymentTransaction> _paymentTransactions = new List<PaymentTransaction>();
         private List<IRabbitRepo> _rabbitRepos = new List<IRabbitRepo>();
-         private List<IRabbitListener> _rabbitListeners = new List<IRabbitListener>();
+        private List<IRabbitListener> _rabbitListeners = new List<IRabbitListener>();
         private ILogger _logger;
         private IFileRepo _fileRepo;
         private ILoggerFactory _loggerFactory;
@@ -68,10 +69,10 @@ namespace NetworkMonitor.Payment.Services
             try
             {
                 _token.Register(() => this.Shutdown());
-                _fileRepo.CheckFileExistsWithCreateObject<List<PaymentTransaction>>("PaymentTransactions",new List<PaymentTransaction>(), _logger);
-                _fileRepo.CheckFileExistsWithCreateObject<List<RegisteredUser>>("RegisteredUsers",new List<RegisteredUser>(), _logger);
-                
-               var paymentTransactionsList = await _fileRepo.GetStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions");
+                _fileRepo.CheckFileExistsWithCreateObject<List<PaymentTransaction>>("PaymentTransactions", new List<PaymentTransaction>(), _logger);
+                _fileRepo.CheckFileExistsWithCreateObject<List<RegisteredUser>>("RegisteredUsers", new List<RegisteredUser>(), _logger);
+
+                var paymentTransactionsList = await _fileRepo.GetStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions");
                 if (paymentTransactionsList == null)
                 {
                     _logger.LogWarning(" Warning : PaymentTransactions data is null. ");
@@ -288,12 +289,24 @@ namespace NetworkMonitor.Payment.Services
                         {
                             await DeleteUserSubscription(p.UserInfo.CustomerId, p.EventId);
                         }
+                        
                     }
                     else
                     {
                         if (p.UserInfo.UserID != null) result.Message += " Warning : Retry with CustomerID=null" + p.UserInfo.UserID;
                         else result.Message += " Warning : Retry with CustomerID=null and UserID=null .";
                     }
+                     if (!string.IsNullOrEmpty(p.UserInfo.Email) && p.IsPayment)
+                    {
+                            var email=p.UserInfo.Email;
+                            await ProcessPaymentLink(email!, p.PriceId,p.EventId);
+                        
+                    }
+                    else if (p.IsPayment){
+                        result.Message += " Warning : Retrying payment with no email" + p.UserInfo.UserID;
+                       
+                    }
+                    
 
                     p.RetryCount++;
                     if (p.RetryCount > 5)
@@ -500,7 +513,21 @@ namespace NetworkMonitor.Payment.Services
             }
             return (new UserInfo() { CustomerId = customerId }, new RegisteredUser());
         }
-
+         private (UserInfo, RegisteredUser) GetUserFromEmail(string email)
+        {
+            var registeredUser = _registeredUsers.Where(w => w.UserEmail == email).FirstOrDefault();
+            if (registeredUser != null)
+            {
+                return new(new UserInfo()
+                {
+                    UserID = registeredUser.UserId,
+                    CustomerId = registeredUser.CustomerId,
+                    Email = registeredUser.UserEmail
+                }, registeredUser);
+            }
+            return (new UserInfo() { Email=email }, new RegisteredUser());
+        }
+       
         public async Task<TResultObj<string>> UpdateUserSubscription(string customerId, string eventId, string priceId, DateTime? cancelAt)
         {
             var result = new TResultObj<string>();
@@ -511,7 +538,7 @@ namespace NetworkMonitor.Payment.Services
             var userObj = GetUserFromCustomerId(customerId);
             var userInfo = userObj.Item1;
             var registeredUser = userObj.Item2;
-           
+
             userInfo.CancelAt = cancelAt;
             bool foundProduct = false;
 
@@ -609,27 +636,33 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-         public async Task<TResultObj<string>> BoostTokenForUser(string customerId, string eventId, string priceId, DateTime? cancelAt)
+        public async Task<TResultObj<string>> ProcessPaymentLink(string email, string paymentLinkId, string eventId)
+        {
+            var result = new TResultObj<string>();
+            
+                result = await BoostTokenForUser(email, eventId, paymentLinkId);
+          
+            return result;
+        }
+
+        private async Task<TResultObj<string>> BoostTokenForUser(string email, string eventId, string priceId)
         {
             var result = new TResultObj<string>();
             result.Success = false;
             result.Message = " STRIPESERVICE : BoostTokenForUserAsync : ";
-            result.Message += " CustomerId = " + customerId + " . ";
+            result.Message += " UserEmail = " + email + " . ";
 
-            var userObj = GetUserFromCustomerId(customerId);
+            var userObj = GetUserFromEmail(email);
             var userInfo = userObj.Item1;
             var registeredUser = userObj.Item2;
-           
-            userInfo.CancelAt = cancelAt;
+
             bool foundProduct = false;
-
-
 
             var paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == priceId).FirstOrDefault();
             if (paymentObj != null)
             {
                 userInfo.TokensUsed = paymentObj.Quantity;
-               result.Message += " Success : Set User BoostTokens(TokensUsed) to" + paymentObj.Quantity ;
+                result.Message += " Success : Set User BoostTokens(TokensUsed) to" + paymentObj.Quantity;
                 foundProduct = true;
             }
             else
@@ -650,11 +683,11 @@ namespace NetworkMonitor.Payment.Services
                 {
                     Id = id + 1,
                     EventDate = DateTime.UtcNow,
-                    IsUpdate = true,
+                    IsPayment = true,
                     IsComplete = false,
                     Result = result,
                     PriceId = priceId,
-                    EventId = eventId
+                    EventId = eventId,
                 };
                 _paymentTransactions.Add(paymentTransaction);
             }

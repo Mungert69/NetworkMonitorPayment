@@ -273,56 +273,45 @@ namespace NetworkMonitor.Payment.Controllers
             if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-
-                if (session != null)
+                if (!string.IsNullOrEmpty(session.PaymentLinkId))
                 {
-                    var registeredUser = new RegisteredUser()
+                    var email = session.CustomerDetails.Email;
+                    if (string.IsNullOrEmpty(email))
                     {
-                        UserEmail = session.CustomerEmail,
-                        CustomerId = session.CustomerId,
-                        UserId = session.ClientReferenceId
-                    };
-                    result = await _stripeService.UpdateCustomerID(registeredUser);
-                    _logger.LogInformation($" Checkout session complete  for UserId {registeredUser.UserId} .");
+                        _logger.LogError("Error : stripeEvent CheckoutSessionCompleted with PaymentLinkId contains no customer Email .");
+                    }
+                    else
+                    {
+                        var tResult = await _stripeService.ProcessPaymentLink(email, session.PaymentLinkId, stripeEvent.Id);
+                        result.Success = tResult.Success;
+                        result.Message += tResult.Message;
+                        result.Data = tResult.Data;
+
+                    }
+
                 }
                 else
                 {
-                    _logger.LogError("Error : stripeEvent CustomerCreated contains no Session object .");
+                    if (session != null)
+                    {
+                        var registeredUser = new RegisteredUser()
+                        {
+                            UserEmail = session.CustomerEmail,
+                            CustomerId = session.CustomerId,
+                            UserId = session.ClientReferenceId
+                        };
+                        result = await _stripeService.UpdateCustomerID(registeredUser);
+                        _logger.LogInformation($" Checkout session complete  for UserId {registeredUser.UserId} .");
+                    }
+                    else
+                    {
+                        _logger.LogError("Error : stripeEvent CustomerCreated contains no Session object .");
+                    }
+
                 }
 
             }
 
-          /*  if (stripeEvent.Type == EventTypes.PaymentComplete)
-            {
-                var session = stripeEvent.Data.Object as PaymentTransaction;
-
-
-                if (session == null || session.CustomerId == null)
-                {
-                    _logger.LogError("Error : stripeEvent Product contains no customerId .");
-                }
-                else
-                {
-                    var items = session.Items;
-                    Product? item = items.FirstOrDefault();
-                    if (items != null && item.Price!=null && item.Price.Id!=null)
-                    { 
-
-                        _logger.LogInformation($" Updating customer subcription for customerId: {session.Customer}");
-
-                        var tResult = await _stripeService.BoostTokenForUser(session.CustomerId, stripeEvent.Id,item.Price.Id, session.CancelAt);
-                        result.Success = tResult.Success;
-                        result.Message += tResult.Message;
-                        result.Data = tResult.Data;
-                    }
-                    else
-                    {
-                        result.Message += " Error : No Items found is session returned from Stripe. Check dashboard for correctly setup Prices. ";
-                    }
-
-                }
-
-            }*/
             if (stripeEvent.Type == EventTypes.CustomerSubscriptionDeleted)
             {
                 var session = stripeEvent.Data.Object as Subscription;
@@ -355,24 +344,24 @@ namespace NetworkMonitor.Payment.Controllers
                     _logger.LogInformation($"Creating customer subcription for customerId: {session.Customer}");
                     var tResult = await _stripeService.UpdateUserCustomerId(session.CustomerId, stripeEvent.Id);
                     var items = session.Items;
-                    var tsResult=new TResultObj<string>();
+                    var tsResult = new TResultObj<string>();
                     SubscriptionItem? item = items.FirstOrDefault();
-                    if (items != null && item.Price!=null && item.Price.Id!=null)
-                    { 
+                    if (items != null && item.Price != null && item.Price.Id != null)
+                    {
 
                         _logger.LogInformation($" Updating customer subcription for customerId: {session.CustomerId} Price.Id {item.Price.Id}");
 
-                        tsResult = await _stripeService.UpdateUserSubscription(session.CustomerId, stripeEvent.Id+"_create",item.Price.Id,null);
-                       
+                        tsResult = await _stripeService.UpdateUserSubscription(session.CustomerId, stripeEvent.Id + "_create", item.Price.Id, null);
+
                     }
                     else
                     {
                         tsResult.Message += " Error : No Items found is session returned from Stripe. Check dashboard for correctly setup Prices. ";
-                    }  
+                    }
                     result.Success = tResult.Success && tsResult.Success;
-                    result.Message += tResult.Message+tsResult.Message;
-                    if (tsResult!=null) result.Data = tsResult.Data;
-                    else result.Data=tResult.Data;
+                    result.Message += tResult.Message + tsResult.Message;
+                    if (tsResult != null) result.Data = tsResult.Data;
+                    else result.Data = tResult.Data;
                 }
 
             }
@@ -389,12 +378,12 @@ namespace NetworkMonitor.Payment.Controllers
                 {
                     var items = session.Items;
                     SubscriptionItem? item = items.FirstOrDefault();
-                    if (items != null && item.Price!=null && item.Price.Id!=null)
-                    { 
+                    if (items != null && item.Price != null && item.Price.Id != null)
+                    {
 
                         _logger.LogInformation($" Updating customer subcription for customerId: {session.Customer}");
 
-                        var tResult = await _stripeService.UpdateUserSubscription(session.CustomerId, stripeEvent.Id,item.Price.Id, session.CancelAt);
+                        var tResult = await _stripeService.UpdateUserSubscription(session.CustomerId, stripeEvent.Id, item.Price.Id, session.CancelAt);
                         result.Success = tResult.Success;
                         result.Message += tResult.Message;
                         result.Data = tResult.Data;
@@ -412,7 +401,7 @@ namespace NetworkMonitor.Payment.Controllers
                 _logger.LogInformation(result.Message);
                 return Ok();
             }
-            
+
             else
             {
                 _logger.LogError($" Error : Webhook failed .  Error was : {result.Message}");
