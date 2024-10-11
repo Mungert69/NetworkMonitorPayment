@@ -53,6 +53,30 @@ namespace NetworkMonitor.Objects.Repository
             }
             return false;
         }
+
+          public static async Task<bool> BoostTokenForUserAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
+        {
+            try
+            {
+                IRabbitRepo? rabbitRepo = rabbitRepos.Where(r => r.SystemUrl.ExternalUrl == paymentTransaction.ExternalUrl).FirstOrDefault();
+                if (rabbitRepo != null)
+                {
+                    await rabbitRepo.PublishAsync<PaymentTransaction>("boostTokenForUser", paymentTransaction);
+                    logger.LogInformation(" Published event boostTokenForUser for Customer = " + paymentTransaction.UserInfo.CustomerId);
+                    return true;
+                }
+                else
+                {
+                    logger.LogError($" Error : RabbitRepo for {paymentTransaction.ExternalUrl} can not be found");
+
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(" Error in PublishRepo.BoostTokenForUserAsync. Error was : " + ex.Message);
+            }
+            return false;
+        }
         public static async Task<bool> UpdateUserPingInfosAsync(ILogger logger, List<IRabbitRepo> rabbitRepos, PaymentTransaction paymentTransaction)
         {
             IRabbitRepo? rabbitRepo;

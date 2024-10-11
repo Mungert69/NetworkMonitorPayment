@@ -608,6 +608,113 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
+         public async Task<TResultObj<string>> BoostTokenForUser(string customerId, string eventId, string priceId, DateTime? cancelAt)
+        {
+            var result = new TResultObj<string>();
+            result.Success = false;
+            result.Message = " STRIPESERVICE : BoostTokenForUserAsync : ";
+            result.Message += " CustomerId = " + customerId + " . ";
+
+            var userObj = GetUserFromCustomerId(customerId);
+            var userInfo = userObj.Item1;
+            var registeredUser = userObj.Item2;
+           
+            userInfo.CancelAt = cancelAt;
+            bool foundProduct = false;
+
+
+
+            var paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == priceId).FirstOrDefault();
+            if (paymentObj != null)
+            {
+                userInfo.TokensUsed = paymentObj.Quantity;
+               result.Message += " Success : Set User BoostTokens(TokensUsed) to" + paymentObj.Quantity ;
+                foundProduct = true;
+            }
+            else
+            {
+                result.Message += " Error : Failed to find Product with PriceID " + priceId;
+                _logger.LogError(" Failed to find Product with PriceID " + priceId);
+            }
+
+
+
+            int id = 0;
+
+            var paymentTransaction = _paymentTransactions.Where(w => w.EventId == eventId).FirstOrDefault();
+            if (paymentTransaction == null)
+            {
+                if (_paymentTransactions.Count() > 0) id = _paymentTransactions.Max(m => m.Id);
+                paymentTransaction = new PaymentTransaction()
+                {
+                    Id = id + 1,
+                    EventDate = DateTime.UtcNow,
+                    IsUpdate = true,
+                    IsComplete = false,
+                    Result = result,
+                    PriceId = priceId,
+                    EventId = eventId
+                };
+                _paymentTransactions.Add(paymentTransaction);
+            }
+            else
+            {
+                if (paymentTransaction.IsComplete)
+                {
+                    result.Success = true;
+                    result.Message += " PaymentTransction already complete . Webhook was called again. ";
+                    return result;
+                }
+
+            }
+            paymentTransaction.UserInfo = userInfo;
+            paymentTransaction.ExternalUrl = registeredUser.ExternalUrl;
+
+            try
+            {
+                if (userInfo.UserID != null && foundProduct && registeredUser.ExternalUrl != "")
+                {
+                    result.Success = await PublishRepo.BoostTokenForUserAsync(_logger, _rabbitRepos, paymentTransaction);
+                    if (result.Success)
+                    {
+                        result.Message += "Success : Published event BoostTokenForUser";
+                        _logger.LogInformation(result.Message);
+                    }
+                    else
+                    {
+                        result.Message += "Error : Failed to Publish event BoostTokenForUser";
+                        _logger.LogError(result.Message);
+                    }
+                }
+                else
+                {
+                    if (userInfo.UserID == null) result.Message += " Error : Did not send BoostTokenForUser userId is null. ";
+
+                    if (!foundProduct) result.Message += " Error : Did not send BoostTokenForUser product not found. ";
+
+                    if (registeredUser.ExternalUrl == "") result.Message += " Error : Did not send BoostTokenForUser External Url is empty. ";
+
+                    result.Success = false;
+                    _logger.LogError(result.Message);
+                }
+
+            }
+            catch (Exception e)
+            {
+                result.Message += "Error : failed publish BoostTokenForUser . Error was : " + e.Message;
+                _logger.LogError("Error : failed publish BoostTokenForUser . Error was : " + e.ToString());
+                result.Success = false;
+            }
+            finally
+            {
+                paymentTransaction.Result = result;
+                //_paymentTransactions.Add(paymentTransaction);
+                result.Message += SaveTransactions();
+            }
+            return result;
+        }
+
+
         public async Task<TResultObj<string>> UpdateUserCustomerId(string customerId, string eventId, bool blankCustomerId = false)
         {
             var result = new TResultObj<string>();

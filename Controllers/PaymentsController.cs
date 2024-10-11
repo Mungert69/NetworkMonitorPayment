@@ -292,7 +292,37 @@ namespace NetworkMonitor.Payment.Controllers
 
             }
 
+          /*  if (stripeEvent.Type == EventTypes.PaymentComplete)
+            {
+                var session = stripeEvent.Data.Object as PaymentTransaction;
 
+
+                if (session == null || session.CustomerId == null)
+                {
+                    _logger.LogError("Error : stripeEvent Product contains no customerId .");
+                }
+                else
+                {
+                    var items = session.Items;
+                    Product? item = items.FirstOrDefault();
+                    if (items != null && item.Price!=null && item.Price.Id!=null)
+                    { 
+
+                        _logger.LogInformation($" Updating customer subcription for customerId: {session.Customer}");
+
+                        var tResult = await _stripeService.BoostTokenForUser(session.CustomerId, stripeEvent.Id,item.Price.Id, session.CancelAt);
+                        result.Success = tResult.Success;
+                        result.Message += tResult.Message;
+                        result.Data = tResult.Data;
+                    }
+                    else
+                    {
+                        result.Message += " Error : No Items found is session returned from Stripe. Check dashboard for correctly setup Prices. ";
+                    }
+
+                }
+
+            }*/
             if (stripeEvent.Type == EventTypes.CustomerSubscriptionDeleted)
             {
                 var session = stripeEvent.Data.Object as Subscription;
@@ -382,6 +412,7 @@ namespace NetworkMonitor.Payment.Controllers
                 _logger.LogInformation(result.Message);
                 return Ok();
             }
+            
             else
             {
                 _logger.LogError($" Error : Webhook failed .  Error was : {result.Message}");
