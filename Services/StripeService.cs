@@ -68,9 +68,10 @@ namespace NetworkMonitor.Payment.Services
             try
             {
                 _token.Register(() => this.Shutdown());
-                _fileRepo.CheckFileExists("PaymentTransactions", _logger);
-                _fileRepo.CheckFileExists("RegisteredUsers", _logger);
-                var paymentTransactionsList = await _fileRepo.GetStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions");
+                _fileRepo.CheckFileExistsWithCreateObject<List<PaymentTransaction>>("PaymentTransactions",new List<PaymentTransaction>(), _logger);
+                _fileRepo.CheckFileExistsWithCreateObject<List<RegisteredUser>>("RegisteredUsers",new List<RegisteredUser>(), _logger);
+                
+               var paymentTransactionsList = await _fileRepo.GetStateJsonAsync<List<PaymentTransaction>>("PaymentTransactions");
                 if (paymentTransactionsList == null)
                 {
                     _logger.LogWarning(" Warning : PaymentTransactions data is null. ");
