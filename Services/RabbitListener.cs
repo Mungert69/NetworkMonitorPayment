@@ -64,23 +64,23 @@ namespace NetworkMonitor.Payment.Services
                 FuncName = "registerUser"
             });
          }
-        protected override ResultObj DeclareConsumers()
+        protected override async Task<ResultObj> DeclareConsumers()
         {
             var result = new ResultObj();
             try
             {
-                _rabbitMQObjs.ForEach(rabbitMQObj =>
+                foreach (var rabbitMQObj in  _rabbitMQObjs)
             {
-                rabbitMQObj.Consumer = new EventingBasicConsumer(rabbitMQObj.ConnectChannel);
+                rabbitMQObj.Consumer = new AsyncEventingBasicConsumer(rabbitMQObj.ConnectChannel);
                 switch (rabbitMQObj.FuncName)
                 {
                     case "paymentWakeUp":
-                        rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received += async(model, ea) =>
+                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                        rabbitMQObj.Consumer.ReceivedAsync += async(model, ea) =>
                     {
                         try {
                             result = await WakeUp();
-                        rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
                         }
                          catch (Exception ex)
                         {
@@ -89,12 +89,12 @@ namespace NetworkMonitor.Payment.Services
                     };
                         break;
                     case "paymentComplete":
-                        rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received += async (model, ea) =>
+                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                        rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
                     {
                         try {
                              result = await PaymentComplete(ConvertToObject<PaymentTransaction>(model, ea));
-                        rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
                         }
                         catch (Exception ex)
                         {
@@ -103,12 +103,12 @@ namespace NetworkMonitor.Payment.Services
                     };
                         break;
                      case "pingInfosComplete":
-                        rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received += async (model, ea) =>
+                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                        rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
                     {
                         try {
                              result = await PingInfosComplete(ConvertToObject<PaymentTransaction>(model, ea));
-                        rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
                         }
                         catch (Exception ex)
                         {
@@ -117,12 +117,12 @@ namespace NetworkMonitor.Payment.Services
                     };
                         break;
                     case "paymentCheck":
-                        rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received += async (model, ea) =>
+                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                        rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
                     {
                         try {
                             result = await PaymentCheck();
-                        rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
                         }
                         catch (Exception ex)
                         {
@@ -131,12 +131,12 @@ namespace NetworkMonitor.Payment.Services
                     };
                         break;
                     case "registerUser":
-                        rabbitMQObj.ConnectChannel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.Received +=  async (model, ea) =>
+                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                        rabbitMQObj.Consumer.ReceivedAsync +=  async (model, ea) =>
                     {
                         try {
                               result = await RegisterUser(ConvertToObject<RegisteredUser>(model, ea));
-                        rabbitMQObj.ConnectChannel.BasicAck(ea.DeliveryTag, false);
+                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
                         }
                         catch (Exception ex)
                         {
@@ -145,7 +145,7 @@ namespace NetworkMonitor.Payment.Services
                     };
                         break;
                 }
-            });
+            }
                 result.Success = true;
                 result.Message += " Success : Declared all consumers ";
             }
