@@ -15,6 +15,8 @@ namespace NetworkMonitor.Payment.Services
     Task<ResultObj> PaymentCheck();
     Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction);
     Task<ResultObj> RegisterUser(RegisteredUser registeredUser);
+            Task Shutdown();
+        Task<ResultObj> Setup();
 }
 
     

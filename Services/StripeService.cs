@@ -127,13 +127,15 @@ namespace NetworkMonitor.Payment.Services
             }
             try
             {
-                this.options.Value.SystemUrls.ForEach(f =>
+                foreach (var f in this.options.Value.SystemUrls)        
                 {
                     ISystemParamsHelper localSystemParamsHelper = new LocalSystemParamsHelper(f);
                     _logger.LogInformation(" Adding RabbitRepo for : " + f.ExternalUrl + " . ");
-                    _rabbitRepos.Add(new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParamsHelper));
+                    var rabbitRepo=new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParamsHelper);
+                    await rabbitRepo.ConnectAndSetUp();
+                    _rabbitRepos.Add(rabbitRepo);
                     _rabbitListeners.Add(new RabbitListener(this, _loggerFactory.CreateLogger<RabbitListener>(), localSystemParamsHelper));
-                });
+                }
             }
             catch (Exception e)
             {
