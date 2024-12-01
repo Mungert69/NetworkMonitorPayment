@@ -134,7 +134,9 @@ namespace NetworkMonitor.Payment.Services
                     var rabbitRepo=new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParamsHelper);
                     await rabbitRepo.ConnectAndSetUp();
                     _rabbitRepos.Add(rabbitRepo);
-                    _rabbitListeners.Add(new RabbitListener(this, _loggerFactory.CreateLogger<RabbitListener>(), localSystemParamsHelper));
+                    var rabbitListener=new RabbitListener(this, _loggerFactory.CreateLogger<RabbitListener>(), localSystemParamsHelper);
+                    await rabbitListener.Setup();
+                    _rabbitListeners.Add(rabbitListener);
                 }
             }
             catch (Exception e)

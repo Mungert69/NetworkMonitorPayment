@@ -62,7 +62,6 @@ namespace NetworkMonitor.Payment
            });
             services.AddSingleton<IStripeService, StripeService>();
             services.AddSingleton<IFileRepo, FileRepo>();
-            //services.AddSingleton<IRabbitListener, RabbitListener>();
             services.AddSingleton<ISystemParamsHelper, SystemParamsHelper>();
             services.AddSingleton(_cancellationTokenSource);
             services.AddAsyncServiceInitialization()
@@ -70,12 +69,7 @@ namespace NetworkMonitor.Payment
         {
             await stripeService.Init();
         });
-        /* .AddInitAction<IRabbitListener>((rabbitListener) =>
-                    {
-                        return Task.CompletedTask;
-                    });*/
-
-            services.AddControllers();
+        services.AddControllers();
 
 
         }
