@@ -27,7 +27,6 @@ namespace NetworkMonitor.Payment.Services
         public RabbitListener(IStripeService stripeService, ILogger<RabbitListenerBase> logger, ISystemParamsHelper systemParamsHelper) : base(logger, DeriveSystemUrl(systemParamsHelper))
         {
             _stripeService = stripeService;
-	    Setup();
          }
 
         
