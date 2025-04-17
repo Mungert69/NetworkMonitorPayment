@@ -127,14 +127,20 @@ namespace NetworkMonitor.Payment.Services
             }
             try
             {
-                foreach (var f in this.options.Value.SystemUrls)        
+                foreach (var f in this.options.Value.SystemUrls)
                 {
+                    if (string.IsNullOrEmpty(f.RabbitPassword))
+                    {
+                        f.RabbitPassword = _systemParamsHelper.GetSystemParams().ThisSystemUrl.RabbitPassword;
+                    }
+
+
                     ISystemParamsHelper localSystemParamsHelper = new LocalSystemParamsHelper(f);
                     _logger.LogInformation(" Adding RabbitRepo for : " + f.ExternalUrl + " . ");
-                    var rabbitRepo=new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParamsHelper);
+                    var rabbitRepo = new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParamsHelper);
                     await rabbitRepo.ConnectAndSetUp();
                     _rabbitRepos.Add(rabbitRepo);
-                    var rabbitListener=new RabbitListener(this, _loggerFactory.CreateLogger<RabbitListener>(), localSystemParamsHelper);
+                    var rabbitListener = new RabbitListener(this, _loggerFactory.CreateLogger<RabbitListener>(), localSystemParamsHelper);
                     await rabbitListener.Setup();
                     _rabbitListeners.Add(rabbitListener);
                 }
@@ -293,24 +299,25 @@ namespace NetworkMonitor.Payment.Services
                         {
                             await DeleteUserSubscription(p.UserInfo.CustomerId, p.EventId);
                         }
-                        
+
                     }
                     else
                     {
                         if (p.UserInfo.UserID != null) result.Message += " Warning : Retry with CustomerID=null" + p.UserInfo.UserID;
                         else result.Message += " Warning : Retry with CustomerID=null and UserID=null .";
                     }
-                     if (!string.IsNullOrEmpty(p.UserInfo.Email) && p.IsPayment)
+                    if (!string.IsNullOrEmpty(p.UserInfo.Email) && p.IsPayment)
                     {
-                            var email=p.UserInfo.Email;
-                            await ProcessPaymentLink(email!, p.PriceId,p.EventId);
-                        
+                        var email = p.UserInfo.Email;
+                        await ProcessPaymentLink(email!, p.PriceId, p.EventId);
+
                     }
-                    else if (p.IsPayment){
+                    else if (p.IsPayment)
+                    {
                         result.Message += " Warning : Retrying payment with no email" + p.UserInfo.UserID;
-                       
+
                     }
-                    
+
 
                     p.RetryCount++;
                     if (p.RetryCount > 5)
@@ -517,7 +524,7 @@ namespace NetworkMonitor.Payment.Services
             }
             return (new UserInfo() { CustomerId = customerId }, new RegisteredUser());
         }
-         private (UserInfo, RegisteredUser) GetUserFromEmail(string email)
+        private (UserInfo, RegisteredUser) GetUserFromEmail(string email)
         {
             var registeredUser = _registeredUsers.Where(w => w.UserEmail == email).FirstOrDefault();
             if (registeredUser != null)
@@ -529,9 +536,9 @@ namespace NetworkMonitor.Payment.Services
                     Email = registeredUser.UserEmail
                 }, registeredUser);
             }
-            return (new UserInfo() { Email=email }, new RegisteredUser());
+            return (new UserInfo() { Email = email }, new RegisteredUser());
         }
-       
+
         public async Task<TResultObj<string>> UpdateUserSubscription(string customerId, string eventId, string priceId, DateTime? cancelAt)
         {
             var result = new TResultObj<string>();
@@ -643,9 +650,9 @@ namespace NetworkMonitor.Payment.Services
         public async Task<TResultObj<string>> ProcessPaymentLink(string email, string paymentLinkId, string eventId)
         {
             var result = new TResultObj<string>();
-            
-                result = await BoostTokenForUser(email, eventId, paymentLinkId);
-          
+
+            result = await BoostTokenForUser(email, eventId, paymentLinkId);
+
             return result;
         }
 
