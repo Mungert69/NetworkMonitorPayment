@@ -352,3 +352,4 @@ RegisteredUser
 PaymentTransactions
 RegisteredUsers
 /.mono
+.env
