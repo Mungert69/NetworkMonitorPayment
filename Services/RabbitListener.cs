@@ -1,4 +1,5 @@
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client;
 using NetworkMonitor.Objects.ServiceMessage;
 using NetworkMonitor.Objects;
 using NetworkMonitor.Objects.Repository;
@@ -10,26 +11,26 @@ using NetworkMonitor.Objects.Factory;
 namespace NetworkMonitor.Payment.Services
 {
     public interface IRabbitListener
-{
-    Task<ResultObj> WakeUp();
-    Task<ResultObj> PaymentCheck();
-    Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction);
-    Task<ResultObj> RegisterUser(RegisteredUser registeredUser);
-            Task Shutdown();
+    {
+        Task<ResultObj> WakeUp();
+        Task<ResultObj> PaymentCheck();
+        Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction);
+        Task<ResultObj> RegisterUser(RegisteredUser registeredUser);
+        Task Shutdown();
         Task<ResultObj> Setup();
-}
+    }
 
-    
-    public class RabbitListener : RabbitListenerBase,IRabbitListener
+
+    public class RabbitListener : RabbitListenerBase, IRabbitListener
     {
 
         private IStripeService _stripeService;
         public RabbitListener(IStripeService stripeService, ILogger<RabbitListenerBase> logger, ISystemParamsHelper systemParamsHelper) : base(logger, DeriveSystemUrl(systemParamsHelper))
         {
             _stripeService = stripeService;
-         }
+        }
 
-        
+
 
         private static SystemUrl DeriveSystemUrl(ISystemParamsHelper systemParamsHelper)
         {
@@ -41,14 +42,14 @@ namespace NetworkMonitor.Payment.Services
             {
                 ExchangeName = "paymentWakeUp",
                 FuncName = "paymentWakeUp",
-                MessageTimeout=59000
+                MessageTimeout = 59000
             });
             _rabbitMQObjs.Add(new RabbitMQObj()
             {
                 ExchangeName = "pingInfosComplete",
                 FuncName = "pingInfosComplete"
             });
-             _rabbitMQObjs.Add(new RabbitMQObj()
+            _rabbitMQObjs.Add(new RabbitMQObj()
             {
                 ExchangeName = "paymentComplete",
                 FuncName = "paymentComplete"
@@ -57,96 +58,112 @@ namespace NetworkMonitor.Payment.Services
             {
                 ExchangeName = "paymentCheck",
                 FuncName = "paymentCheck",
-                MessageTimeout=59000
+                MessageTimeout = 59000
             });
             _rabbitMQObjs.Add(new RabbitMQObj()
             {
                 ExchangeName = "registerUser",
                 FuncName = "registerUser"
             });
-         }
+        }
         protected override async Task<ResultObj> DeclareConsumers()
         {
             var result = new ResultObj();
             try
             {
-                foreach (var rabbitMQObj in  _rabbitMQObjs)
-            {
-                rabbitMQObj.Consumer = new AsyncEventingBasicConsumer(rabbitMQObj.ConnectChannel);
-                switch (rabbitMQObj.FuncName)
-                {
-                    case "paymentWakeUp":
-                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.ReceivedAsync += async(model, ea) =>
-                    {
-                        try {
-                            result = await WakeUp();
-                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
-                        }
+                await Parallel.ForEachAsync(_rabbitMQObjs, async (rabbitMQObj, cancellationToken) =>
+                 {
+
+                     if (rabbitMQObj.ConnectChannel != null)
+                     {
+
+                         rabbitMQObj.Consumer = new AsyncEventingBasicConsumer(rabbitMQObj.ConnectChannel);
+                         await rabbitMQObj.ConnectChannel.BasicConsumeAsync(
+                                 queue: rabbitMQObj.QueueName,
+                                 autoAck: false,
+                                 consumer: rabbitMQObj.Consumer
+                             );
+
+                         switch (rabbitMQObj.FuncName)
+                         {
+                             case "paymentWakeUp":
+                                 await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                                 rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
+                            {
+                         try
+                         {
+                             result = await WakeUp();
+                             await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
+                         }
                          catch (Exception ex)
-                        {
-                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentWakeUp " + ex.Message);
-                        }
-                    };
-                        break;
-                    case "paymentComplete":
-                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
-                    {
-                        try {
+                         {
+                             _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentWakeUp " + ex.Message);
+                         }
+                     };
+                                 break;
+                             case "paymentComplete":
+                                 await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                                 rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
+                            {
+                         try
+                         {
                              result = await PaymentComplete(ConvertToObject<PaymentTransaction>(model, ea));
-                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentComplete " + ex.Message);
-                        }
-                    };
-                        break;
-                     case "pingInfosComplete":
-                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
-                    {
-                        try {
+                             await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
+                         }
+                         catch (Exception ex)
+                         {
+                             _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentComplete " + ex.Message);
+                         }
+                     };
+                                 break;
+                             case "pingInfosComplete":
+                                 await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                                 rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
+                            {
+                         try
+                         {
                              result = await PingInfosComplete(ConvertToObject<PaymentTransaction>(model, ea));
-                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.pingInfosComplete " + ex.Message);
-                        }
-                    };
-                        break;
-                    case "paymentCheck":
-                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
-                    {
-                        try {
-                            result = await PaymentCheck();
-                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentCheck " + ex.Message);
-                        }
-                    };
-                        break;
-                    case "registerUser":
-                        await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
-                        rabbitMQObj.Consumer.ReceivedAsync +=  async (model, ea) =>
-                    {
-                        try {
-                              result = await RegisterUser(ConvertToObject<RegisteredUser>(model, ea));
-                        await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(" Error : RabbitListener.DeclareConsumers.registerUser " + ex.Message);
-                        }
-                    };
-                        break;
-                }
-            }
+                             await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
+                         }
+                         catch (Exception ex)
+                         {
+                             _logger.LogError(" Error : RabbitListener.DeclareConsumers.pingInfosComplete " + ex.Message);
+                         }
+                     };
+                                 break;
+                             case "paymentCheck":
+                                 await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                                 rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
+                            {
+                         try
+                         {
+                             result = await PaymentCheck();
+                             await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
+                         }
+                         catch (Exception ex)
+                         {
+                             _logger.LogError(" Error : RabbitListener.DeclareConsumers.paymentCheck " + ex.Message);
+                         }
+                     };
+                                 break;
+                             case "registerUser":
+                                 await rabbitMQObj.ConnectChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false);
+                                 rabbitMQObj.Consumer.ReceivedAsync += async (model, ea) =>
+                            {
+                         try
+                         {
+                             result = await RegisterUser(ConvertToObject<RegisteredUser>(model, ea));
+                             await rabbitMQObj.ConnectChannel.BasicAckAsync(ea.DeliveryTag, false);
+                         }
+                         catch (Exception ex)
+                         {
+                             _logger.LogError(" Error : RabbitListener.DeclareConsumers.registerUser " + ex.Message);
+                         }
+                     };
+                                 break;
+                         }
+                     }
+                 });
                 result.Success = true;
                 result.Message += " Success : Declared all consumers ";
             }
@@ -217,7 +234,7 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-            public async Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction)
+        public async Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction)
         {
             ResultObj result = new ResultObj();
             result.Success = false;
@@ -236,23 +253,23 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-    
-           public async Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser)
+
+        public async Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser)
         {
-            var result =new ResultObj();
+            var result = new ResultObj();
             try
             {
                 result = await _stripeService.RegisterUser(RegisteredUser);
-               _logger.LogInformation(result.Message);
+                _logger.LogInformation(result.Message);
             }
             catch (Exception ex)
             {
-                string message=" Failed to Register User. Eror was : " + ex.Message;
-                _logger.LogError(message );
+                string message = " Failed to Register User. Eror was : " + ex.Message;
+                _logger.LogError(message);
                 result.Success = false;
                 result.Message = message;
             }
             return result;
         }
-     }
+    }
 }

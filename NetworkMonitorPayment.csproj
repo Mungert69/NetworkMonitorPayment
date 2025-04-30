@@ -5,7 +5,7 @@
     <PublishProfile>DefaultContainer</PublishProfile>
     <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:9.0</ContainerBaseImage>
     <ContainerImageName>mungert/networkmonitorpayment</ContainerImageName>
-    <ContainerImageTag>1.6.2</ContainerImageTag>
+    <ContainerImageTag>1.6.3</ContainerImageTag>
         <Nullable>enable</Nullable>
 </PropertyGroup>
 <PropertyGroup Condition="'$(Configuration)'=='Release-Dev'">
