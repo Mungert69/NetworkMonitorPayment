@@ -10,11 +10,13 @@ namespace NetworkMonitor.Payment
 {
     public class Program
     {
+        private static string _pfxKey="";
         public static void Main(string[] args)
         {
             IConfigurationRoot config = new ConfigurationBuilder()
         .AddJsonFile("appsettings.json", optional: false)
         .Build();
+        _pfxKey=config["Pfxkey"] ?? "";
             IWebHost host = CreateWebHostBuilder(args).Build();
             host.Run();
         }
@@ -25,7 +27,7 @@ namespace NetworkMonitor.Payment
                 options.Listen(IPAddress.Any, 2082);
                 options.Listen(IPAddress.Any, 2083, listenOptions =>
                 {
-                    listenOptions.UseHttps("https-freenetworkmonitor.pfx", "Ac£0462110");
+                    listenOptions.UseHttps("https-freenetworkmonitor.pfx", _pfxKey);
                 });
             }).UseStartup<Startup>();
     }
