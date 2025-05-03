@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Net;
+using NetworkMonitor.Objects;
 
 
 namespace NetworkMonitor.Payment
@@ -27,7 +28,7 @@ namespace NetworkMonitor.Payment
                 options.Listen(IPAddress.Any, 2082);
                 options.Listen(IPAddress.Any, 2083, listenOptions =>
                 {
-                    listenOptions.UseHttps("https-freenetworkmonitor.pfx", _pfxKey);
+                    listenOptions.UseHttps($"https-{AppConstants.AppSecondLevelDomain}.pfx", _pfxKey);
                 });
             }).UseStartup<Startup>();
     }

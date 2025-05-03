@@ -343,7 +343,7 @@ healthchecksdb
 /Report20210116-1159.diagsession
 appsettings*.json
 https.pfx
-https-freenetworkmonitor.pfx
+https-*.pfx
 *.sentinel
 *project.razor.json
 UserInfos
