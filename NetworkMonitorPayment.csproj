@@ -33,6 +33,6 @@
     <PackageReference Include="Stripe.net" Version="46.2.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NetworkMonitor\NetworkMonitor.csproj" />
+    <ProjectReference Include="..\NetworkMonitorLib\NetworkMonitor.csproj" />
   </ItemGroup>
 </Project>
