@@ -859,9 +859,9 @@ namespace NetworkMonitor.Payment.Services
             {
                 userInfo.AccountType = paymentObj.ProductName;
                 userInfo.HostLimit = paymentObj.HostLimit;
-                userInfo.CancelAt = null;
-                userInfo.CustomerId = null;
-                result.Message += " Success : Deleted CustomerID Subsciption changed to " + paymentObj.ProductName + " ";
+                userInfo.CancelAt = DateTime.UtcNow;
+                userInfo.CustomerId = customerId;
+                result.Message += $" Success : Deleted CustomerID {customerId} Subsciption changed to {paymentObj.ProductName} ";
             }
             else
             {

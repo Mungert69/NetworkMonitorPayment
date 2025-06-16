@@ -322,7 +322,7 @@ namespace NetworkMonitor.Payment.Controllers
                 }
                 else
                 {
-                    _logger.LogInformation($" Deleting customer subcription for customerId: {session.Customer}");
+                    _logger.LogInformation($" Deleting customer subcription for customerId: {session.CustomerId}");
                     var tResult = await _stripeService.DeleteUserSubscription(session.CustomerId, stripeEvent.Id);
                     result.Success = tResult.Success;
                     result.Message += tResult.Message;
