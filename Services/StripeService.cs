@@ -136,11 +136,12 @@ namespace NetworkMonitor.Payment.Services
 
 
                     ISystemParamsHelper localSystemParamsHelper = new LocalSystemParamsHelper(f);
+                    var localSystemParams=localSystemParamsHelper.GetSystemParams();
                     _logger.LogInformation(" Adding RabbitRepo for : " + f.ExternalUrl + " . ");
-                    var rabbitRepo = new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParamsHelper);
+                    var rabbitRepo = new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParams);
                     await rabbitRepo.ConnectAndSetUp();
                     _rabbitRepos.Add(rabbitRepo);
-                    var rabbitListener = new RabbitListener(this, _loggerFactory.CreateLogger<RabbitListener>(), localSystemParamsHelper);
+                    var rabbitListener = new RabbitListener(this, _loggerFactory.CreateLogger<RabbitListener>(), localSystemParams);
                     await rabbitListener.Setup();
                     _rabbitListeners.Add(rabbitListener);
                 }
