@@ -25,16 +25,16 @@ namespace NetworkMonitor.Payment.Services
     {
 
         private IStripeService _stripeService;
-        public RabbitListener(IStripeService stripeService, ILogger<RabbitListenerBase> logger, ISystemParamsHelper systemParamsHelper) : base(logger, DeriveSystemUrl(systemParamsHelper))
+        public RabbitListener(IStripeService stripeService, ILogger<RabbitListenerBase> logger, SystemParams systemParams) : base(logger, DeriveSystemUrl(systemParams))
         {
             _stripeService = stripeService;
         }
 
 
 
-        private static SystemUrl DeriveSystemUrl(ISystemParamsHelper systemParamsHelper)
+    private static SystemUrl DeriveSystemUrl(SystemParams systemParams)
         {
-            return systemParamsHelper.GetSystemParams().ThisSystemUrl;
+            return systemParams.ThisSystemUrl;
         }
         protected override void InitRabbitMQObjs()
         {

@@ -63,6 +63,11 @@ namespace NetworkMonitor.Payment
             services.AddSingleton<IStripeService, StripeService>();
             services.AddSingleton<IFileRepo, FileRepo>();
             services.AddSingleton<ISystemParamsHelper, SystemParamsHelper>();
+            services.AddSingleton<SystemParams>(sp =>
+           {
+               var systemParamsHelper = sp.GetRequiredService<ISystemParamsHelper>();
+               return systemParamsHelper.GetSystemParams();
+           });
             services.AddSingleton(_cancellationTokenSource);
             services.AddAsyncServiceInitialization()
         .AddInitAction<IStripeService>(async (stripeService) =>
