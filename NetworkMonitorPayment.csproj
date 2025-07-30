@@ -4,7 +4,7 @@
     <TargetFramework>netcoreapp9.0</TargetFramework>
     <PublishProfile>DefaultContainer</PublishProfile>
     <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:9.0</ContainerBaseImage>
-    <ContainerImageName>mungert/networkmonitorpayment</ContainerImageName>
+    <ContainerRepository>mungert/networkmonitorpayment</ContainerRepository>
     <ContainerImageTag>1.7.0</ContainerImageTag>
         <Nullable>enable</Nullable>
         <StartupObject>NetworkMonitor.Payment.Program</StartupObject>
@@ -13,7 +13,7 @@
 <PropertyGroup Condition="'$(Configuration)'=='Release-Dev'">
     <DefineConstants>DEV</DefineConstants>
         <Optimize>true</Optimize>
-         <ContainerRepositorye>mungert/networkmonitorpayment-dev</ContainerRepository>
+         <ContainerRepository>mungert/networkmonitorpayment-dev</ContainerRepository>
 </PropertyGroup>
  <!-- Conditional AOT and optimization for Release configuration -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
