@@ -9,7 +9,6 @@ using NetworkMonitor.Objects.Repository;
 using NetworkMonitor.Objects.Factory;
 using NetworkMonitor.Utils.Helpers;
 using NetworkMonitor.Objects.ServiceMessage;
-using NetworkMonitor.Utils.Helpers;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Stripe;

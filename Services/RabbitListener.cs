@@ -214,11 +214,16 @@ namespace NetworkMonitor.Payment.Services
             }
             return result;
         }
-        public async Task<ResultObj> PaymentComplete(PaymentTransaction paymentTransaction)
+        public async Task<ResultObj> PaymentComplete(PaymentTransaction? paymentTransaction)
         {
             ResultObj result = new ResultObj();
             result.Success = false;
             result.Message = "MessageAPI : Payment Complete : ";
+            if (paymentTransaction == null)
+            { 
+                result.Message += " paymentTransaction is null";
+                return result;
+            }
             try
             {
                 result = await _stripeService.PaymentComplete(paymentTransaction);
@@ -234,11 +239,16 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-        public async Task<ResultObj> PingInfosComplete(PaymentTransaction paymentTransaction)
+        public async Task<ResultObj> PingInfosComplete(PaymentTransaction? paymentTransaction)
         {
             ResultObj result = new ResultObj();
             result.Success = false;
             result.Message = "MessageAPI : PingInfos Complete : ";
+            if (paymentTransaction == null)
+            { 
+                result.Message += " paymentTransaction is null";
+                return result;
+            }
             try
             {
                 result = await _stripeService.PingInfosComplete(paymentTransaction);
@@ -254,12 +264,17 @@ namespace NetworkMonitor.Payment.Services
             return result;
         }
 
-        public async Task<ResultObj> RegisterUser(RegisteredUser RegisteredUser)
+        public async Task<ResultObj> RegisterUser(RegisteredUser? registeredUser)
         {
             var result = new ResultObj();
+              if (registeredUser == null)
+            { 
+                result.Message += " registeredUser is null";
+                return result;
+            }
             try
             {
-                result = await _stripeService.RegisterUser(RegisteredUser);
+                result = await _stripeService.RegisterUser(registeredUser);
                 _logger.LogInformation(result.Message);
             }
             catch (Exception ex)

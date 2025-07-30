@@ -1,4 +1,7 @@
 #!/bin/sh
-value=`cat ../secret`
-git pull https://mungert69:$value@github.com/Mungert69/NetworkMonitorPayment
-dotnet publish -m NetworkMonitorPayment.csproj  --os linux --arch x64 -p:PublishProfile=DefaultContainer -c Release-Dev --self-contained true -p:PublishSingleFile=true
+dotnet test
+dotnet publish \
+  -c Release-Dev \
+  --runtime linux-x64 \
+  -m \
+  -p:PublishProfile=DefaultContainer

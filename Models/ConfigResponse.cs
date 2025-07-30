@@ -4,11 +4,11 @@ namespace NetworkMonitor.Payment.Models;
 public class ConfigResponse
 {
     [JsonProperty("publishableKey")]
-    public string PublishableKey { get; set; }
+    public string PublishableKey { get; set; } = string.Empty;
 
     [JsonProperty("proPrice")]
-    public string ProPrice { get; set; }
+    public string ProPrice { get; set; } = string.Empty;
 
     [JsonProperty("basicPrice")]
-    public string BasicPrice { get; set; }
+    public string BasicPrice { get; set; } = string.Empty;
 }

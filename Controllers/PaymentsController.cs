@@ -86,7 +86,9 @@ namespace NetworkMonitor.Payment.Controllers
             try
             {
                 var session = await service.CreateAsync(options);
+#pragma warning disable ASP0019 // Suggest using IHeaderDictionary.Append or the indexer
                 Response.Headers.Add("Location", session.Url);
+#pragma warning restore ASP0019 // Suggest using IHeaderDictionary.Append or the indexer
                 _stripeService.SessionList.Add(session.Id, userId);
                 _logger.LogInformation(" Success : Redirecting to Checkout session for UserID " + userId + " with customerId " + session.CustomerId + " , sessionId " + session.Id + " . ");
                 return new StatusCodeResult(303);
@@ -180,7 +182,9 @@ namespace NetworkMonitor.Payment.Controllers
                 };
                 var service = new Stripe.BillingPortal.SessionService(this.client);
                 var session = await service.CreateAsync(options);
+#pragma warning disable ASP0019 // Suggest using IHeaderDictionary.Append or the indexer
                 Response.Headers.Add("Location", session.Url);
+#pragma warning restore ASP0019 // Suggest using IHeaderDictionary.Append or the indexer
                 _logger.LogInformation($" Success : Redirecting to Billing portal  for customerId {customerId}");
 
                 return new StatusCodeResult(303);
@@ -273,7 +277,7 @@ namespace NetworkMonitor.Payment.Controllers
             if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                if (!string.IsNullOrEmpty(session.PaymentLinkId))
+                if (session!=null && string.IsNullOrEmpty(session.PaymentLinkId))
                 {
                     var email = session.CustomerDetails.Email;
                     if (string.IsNullOrEmpty(email))
@@ -346,7 +350,7 @@ namespace NetworkMonitor.Payment.Controllers
                     var items = session.Items;
                     var tsResult = new TResultObj<string>();
                     SubscriptionItem? item = items.FirstOrDefault();
-                    if (items != null && item.Price != null && item.Price.Id != null)
+                    if (item != null && item.Price != null && item.Price.Id != null)
                     {
 
                         _logger.LogInformation($" Updating customer subcription for customerId: {session.CustomerId} Price.Id {item.Price.Id}");
@@ -378,7 +382,7 @@ namespace NetworkMonitor.Payment.Controllers
                 {
                     var items = session.Items;
                     SubscriptionItem? item = items.FirstOrDefault();
-                    if (items != null && item.Price != null && item.Price.Id != null)
+                    if (item != null && item.Price != null && item.Price.Id != null)
                     {
 
                         _logger.LogInformation($" Updating customer subcription for customerId: {session.Customer}");
