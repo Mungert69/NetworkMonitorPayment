@@ -277,7 +277,7 @@ namespace NetworkMonitor.Payment.Controllers
             if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
             {
                 var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                if (session!=null && string.IsNullOrEmpty(session.PaymentLinkId))
+                if (session!=null && !string.IsNullOrEmpty(session.PaymentLinkId))
                 {
                     var email = session.CustomerDetails.Email;
                     if (string.IsNullOrEmpty(email))
