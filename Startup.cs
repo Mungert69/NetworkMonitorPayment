@@ -52,9 +52,7 @@ namespace NetworkMonitor.Payment
                 options.LocalSystemUrl = _config.GetSection("LocalSystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("LocalSystemUrl");
 
                 options.LoadServer = _config.GetValue<string>("LoadServer") ?? throw new ArgumentNullException("LoadServer");
-                options.StripeProducts = new List<ProductObj>();
-                _config.GetSection("Products").Bind(options.StripeProducts);
-            });
+                     });
             services.AddCors(options =>
            {
                options.AddPolicy("AllowAnyOrigin",

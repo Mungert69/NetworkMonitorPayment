@@ -52,7 +52,7 @@ namespace NetworkMonitor.Payment.Controllers
 
 
 
-            ProductObj? productObj = this.options.Value.StripeProducts.Where(w => w.ProductName == productName).FirstOrDefault();
+            ProductObj? productObj = _stripeService.Products.Where(w => w.ProductName == productName).FirstOrDefault();
             if (productObj == null || productObj.PriceId == null)
             {
                 result.Message += " Error : Unable to find product info for product name " + productName + " . ";

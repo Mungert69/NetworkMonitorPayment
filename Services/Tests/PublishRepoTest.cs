@@ -23,12 +23,12 @@ public class PublishRepoTest
     }
 
     [Fact]
-    public async Task UpdateProductsAsync_PublishesToAllRepos()
+    public async Task GetProductsAsync_PublishesToAllRepos()
     {
         var updateProductObj = new UpdateProductObj();
-        await PublishRepo.UpdateProductsAsync(_loggerMock.Object, _rabbitRepos, updateProductObj);
+        await PublishRepo.GetProductsAsync(_loggerMock.Object, _rabbitRepos, updateProductObj);
 
-        _rabbitRepoMock.Verify(r => r.PublishAsync<UpdateProductObj>("updateProducts", updateProductObj, ""), Times.Once);
+        _rabbitRepoMock.Verify(r => r.PublishAsync("getProducts", null,""), Times.Once);
     }
 
     [Fact]

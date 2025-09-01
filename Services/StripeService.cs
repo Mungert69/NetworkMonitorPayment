@@ -34,10 +34,16 @@ namespace NetworkMonitor.Payment.Services
         Task<TResultObj<string>> DeleteUserSubscription(string customerId, string eventId);
         Task Init();
         ConcurrentBag<RegisteredUser> RegisteredUsers { get; }
+        Task<ResultObj> UpdateProducts(UpdateProductObj update);
+        List<ProductObj> Products { get; }
     }
     public class StripeService : IStripeService
     {
         CancellationToken _token;
+        private readonly object _productsLock = new();
+
+        List<ProductObj> _products = new List<ProductObj>();
+        public List<ProductObj> Products { get => _products; }
         private Dictionary<string, string> _sessionList = new Dictionary<string, string>();
         private List<PaymentTransaction> _paymentTransactions = new List<PaymentTransaction>();
         private List<IRabbitRepo> _rabbitRepos = new List<IRabbitRepo>();
@@ -135,7 +141,7 @@ namespace NetworkMonitor.Payment.Services
 
 
                     ISystemParamsHelper localSystemParamsHelper = new LocalSystemParamsHelper(f);
-                    var localSystemParams=localSystemParamsHelper.GetSystemParams();
+                    var localSystemParams = localSystemParamsHelper.GetSystemParams();
                     _logger.LogInformation(" Adding RabbitRepo for : " + f.ExternalUrl + " . ");
                     var rabbitRepo = new RabbitRepo(_loggerFactory.CreateLogger<RabbitRepo>(), localSystemParams);
                     await rabbitRepo.ConnectAndSetUp();
@@ -144,26 +150,17 @@ namespace NetworkMonitor.Payment.Services
                     await rabbitListener.Setup();
                     _rabbitListeners.Add(rabbitListener);
                 }
+                // NEW: ask every service to send its catalog
+                await PublishRepo.GetProductsAsync(_logger, _rabbitRepos, new UpdateProductObj());
+                _logger.LogInformation("Requested products from all services (getProducts).");
+
             }
             catch (Exception e)
             {
                 result.Message += " Error : Could not setup RabbitRepos. Error was : " + e.ToString() + " . ";
                 result.Success = false;
             }
-            try
-            {
-                var updateProductObj = new UpdateProductObj()
-                {
-                    Products = this.options.Value.StripeProducts,
-                    PaymentServerUrl = this.options.Value.LocalSystemUrl.ExternalUrl
-                };
-                await PublishRepo.UpdateProductsAsync(_logger, _rabbitRepos, updateProductObj);
-            }
-            catch (Exception e)
-            {
-                result.Message += " Error : Could not Publish product list to Monitor Services. Error was : " + e.ToString() + " . ";
-                result.Success = false;
-            }
+
             if (_paymentTransactions == null)
             {
                 _paymentTransactions = new List<PaymentTransaction>();
@@ -178,6 +175,67 @@ namespace NetworkMonitor.Payment.Services
                 _logger.LogInformation(result.Message);
             else _logger.LogCritical(result.Message);
 
+        }
+
+        public Task<ResultObj> UpdateProducts(UpdateProductObj update)
+        {
+            var result = new ResultObj { Message = "STRIPESERVICE : UpdateProducts : " };
+
+            if (update == null || update.Products == null || update.Products.Count == 0)
+            {
+                result.Success = true; // not an error, just nothing to do
+                result.Message += " No products in payload.";
+                _logger.LogInformation(result.Message);
+                return Task.FromResult(result);
+            }
+
+            int added = 0, updated = 0;
+
+            lock (_productsLock)
+            {
+                // Upsert by PriceId when present; fallback to ProductName if PriceId is missing.
+                foreach (var incoming in update.Products)
+                {
+                    if (incoming == null) continue;
+
+                    ProductObj? existing = null;
+
+                    if (!string.IsNullOrWhiteSpace(incoming.PriceId))
+                    {
+                        existing = _products.FirstOrDefault(p => p.PriceId == incoming.PriceId);
+                    }
+                    if (existing == null && !string.IsNullOrWhiteSpace(incoming.ProductName))
+                    {
+                        existing = _products.FirstOrDefault(p => p.ProductName == incoming.ProductName);
+                    }
+
+                    if (existing == null)
+                    {
+                        _products.Add(incoming);
+                        added++;
+                    }
+                    else
+                    {
+                        // update fields (add any additional fields you carry on ProductObj)
+                        existing.ProductName = incoming.ProductName;
+                        existing.PriceId = incoming.PriceId;
+                        existing.HostLimit = incoming.HostLimit;
+                        existing.Quantity = incoming.Quantity;
+                        existing.Description = incoming.Description;
+                        existing.Enabled = incoming.Enabled;
+                        existing.Price = incoming.Price;
+                        existing.SubscriptionUrl = incoming.SubscriptionUrl;
+                        existing.SubscribeInstructions = incoming.SubscribeInstructions;
+                        updated++;
+                    }
+                }
+            }
+
+            result.Success = true;
+            result.Message += $" Upsert complete. Added={added}, Updated={updated}. Source={update.PaymentServerUrl}";
+            _logger.LogInformation(result.Message);
+
+            return Task.FromResult(result);
         }
         public void Shutdown()
         {
@@ -555,7 +613,7 @@ namespace NetworkMonitor.Payment.Services
 
 
 
-            var paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == priceId).FirstOrDefault();
+            var paymentObj = Products.Where(w => w.PriceId == priceId).FirstOrDefault();
             if (paymentObj != null)
             {
                 userInfo.AccountType = paymentObj.ProductName;
@@ -669,7 +727,7 @@ namespace NetworkMonitor.Payment.Services
 
             bool foundProduct = false;
 
-            var paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == priceId).FirstOrDefault();
+            var paymentObj = Products.Where(w => w.PriceId == priceId).FirstOrDefault();
             if (paymentObj != null)
             {
                 userInfo.TokensUsed = paymentObj.Quantity;
@@ -854,7 +912,7 @@ namespace NetworkMonitor.Payment.Services
             var userInfo = userObj.Item1;
             var registeredUser = userObj.Item2;
 
-            var paymentObj = this.options.Value.StripeProducts.Where(w => w.PriceId == "price_free").FirstOrDefault();
+            var paymentObj = Products.Where(w => w.PriceId == "price_free").FirstOrDefault();
             if (paymentObj != null)
             {
                 userInfo.AccountType = paymentObj.ProductName;
