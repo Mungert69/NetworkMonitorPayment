@@ -59,7 +59,12 @@ namespace NetworkMonitor.Payment
                    builder => builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
            });
             services.AddSingleton<IStripeService, StripeService>();
-            services.AddSingleton<IFileRepo, FileRepo>();
+            services.AddSingleton<IFileRepo, FileRepo>(
+                 provider =>
+                 {
+                     return new FileRepo(false, "./state");
+                 }
+             );
             services.AddSingleton<ISystemParamsHelper, SystemParamsHelper>();
             services.AddSingleton<SystemParams>(sp =>
            {
