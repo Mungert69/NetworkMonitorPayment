@@ -32,16 +32,16 @@ namespace NetworkMonitor.Payment
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-          services.AddLogging(builder =>
-               {
-                   builder.AddSimpleConsole(options =>
-                        {
-                            options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
-                            options.IncludeScopes = true;
-                        });
-               });
+            services.AddLogging(builder =>
+                 {
+                     builder.AddSimpleConsole(options =>
+                          {
+                              options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+                              options.IncludeScopes = true;
+                          });
+                 });
 
-            
+
             services.Configure<PaymentOptions>(options =>
             {
                 options.StripePublishableKey = _config["StripePublishableKey"] ?? throw new ArgumentNullException("StripePublishableKey");
@@ -52,7 +52,7 @@ namespace NetworkMonitor.Payment
                 options.LocalSystemUrl = _config.GetSection("LocalSystemUrl").Get<SystemUrl>() ?? throw new ArgumentNullException("LocalSystemUrl");
 
                 options.LoadServer = _config.GetValue<string>("LoadServer") ?? throw new ArgumentNullException("LoadServer");
-                     });
+            });
             services.AddCors(options =>
            {
                options.AddPolicy("AllowAnyOrigin",
@@ -77,7 +77,7 @@ namespace NetworkMonitor.Payment
         {
             await stripeService.Init();
         });
-        services.AddControllers();
+            services.AddControllers();
 
 
         }
@@ -92,7 +92,7 @@ namespace NetworkMonitor.Payment
             {
                 app.UseDeveloperExceptionPage();
             }
-           
+
             app.UseCors("AllowAnyOrigin");
             //app.UseHttpsRedirection();
             app.UseRouting();
